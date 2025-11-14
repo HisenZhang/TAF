@@ -2290,6 +2290,10 @@
                 this.updateActiveTab();
                 Utils.updateUrl();
 
+                // Hide error and loading panels when switching tabs
+                Utils.hideElement('errorPanel');
+                Utils.hideElement('loadingPanel');
+
                 // Hide all view containers
                 document.getElementById('tafView').classList.add('hidden');
                 document.getElementById('metarView').classList.add('hidden');

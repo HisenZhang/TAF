@@ -2030,12 +2030,21 @@
                         Api.fetchAirport(icao)
                     ]);
 
+                    // Check if all requests failed - likely invalid ICAO
+                    const allFailed = [tafResult, metarResult, pirepResult, airportResult].every(r => r.status === 'rejected');
+                    if (allFailed) {
+                        const errorMsg = metarResult.reason?.message || tafResult.reason?.message || 'Invalid ICAO or no data available';
+                        UI.showError(`NO DATA AVAILABLE FOR ${icao}\n${errorMsg}`);
+                        UI.hideLoading();
+                        return;
+                    }
+
                     // Store airport metadata first
                     if (airportResult.status === 'fulfilled') {
                         App.currentAirport = airportResult.value;
                     }
 
-                    // Process TAF - call fetchAndDisplayTaf to handle processing
+                    // Process TAF
                     if (tafResult.status === 'fulfilled') {
                         await this.processTafData(tafResult.value.json, icao);
                     }
@@ -2055,14 +2064,14 @@
                         UI.displayAirportData(airportResult.value, icao);
                     }
 
-                    // Show the current tab view
-                    this.switchTab(currentTab);
-
                     UI.updateStatus();
+                    UI.hideLoading();
+
+                    // Show the current tab view AFTER hiding loading
+                    this.switchTab(currentTab);
                 } catch (err) {
                     console.error('Failed to fetch data:', err);
                     UI.showError(`FAILED TO LOAD DATA FOR ${icao}\nERROR: ${err.message}`);
-                } finally {
                     UI.hideLoading();
                 }
             },

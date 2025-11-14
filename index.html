@@ -1353,18 +1353,12 @@
             },
 
             hideAllViews() {
-                // TAF view elements
-                Utils.hideElement('primaryDisplay');
-                Utils.hideElement('rawDataPanel');
-                Utils.hideElement('windPanel');
-                Utils.hideElement('airportPanel');
-
-                // METAR view elements
-                Utils.hideElement('metarDisplay');
-                Utils.hideElement('metarRawPanel');
-
-                // PIREP view elements
-                Utils.hideElement('pirepDisplay');
+                // Hide view containers, not individual display elements
+                // Individual display elements are controlled by their display functions
+                document.getElementById('tafView').classList.add('hidden');
+                document.getElementById('metarView').classList.add('hidden');
+                document.getElementById('pirepView').classList.add('hidden');
+                document.getElementById('airportView').classList.add('hidden');
             },
 
             updateStatus() {

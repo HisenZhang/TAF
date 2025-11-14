@@ -1,0 +1,2000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TAF Aviation Weather</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* ===== IMPORTS & RESET ===== */
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* ===== BASE STYLES ===== */
+        body {
+            font-family: 'Roboto Mono', 'Courier New', monospace;
+            background: #000000;
+            min-height: 100vh;
+            color: #FFFFFF;
+            font-weight: 500;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* ===== LAYOUT COMPONENTS ===== */
+        .avionics-container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 8px;
+            background: #000000;
+        }
+
+        /* ===== HEADER SECTION ===== */
+        .avionics-header {
+            background: #000000;
+            border: 2px solid #FFFFFF;
+            padding: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            min-height: 60px;
+        }
+
+        .avionics-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #FFFFFF;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .avionics-controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            height: 100%;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .control-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #FFFFFF;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .avionics-input {
+            background: #000000;
+            border: 2px solid #00FFFF;
+            color: #FFFFFF;
+            padding: 6px 10px;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            width: 70px;
+            text-align: center;
+            letter-spacing: 1px;
+        }
+
+        .avionics-input:focus {
+            outline: none;
+            border-color: #FFFFFF;
+            background: #1a1a1a;
+        }
+
+        .avionics-btn {
+            background: #000000;
+            border: 2px solid #FFFFFF;
+            color: #FFFFFF;
+            padding: 6px 12px;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.1s;
+            letter-spacing: 0.5px;
+        }
+
+        .avionics-btn:hover:not(:disabled) {
+            background: #FFFFFF;
+            color: #000000;
+        }
+
+        .avionics-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            border-color: #666666;
+            color: #666666;
+        }
+
+        .status-display {
+            font-size: 11px;
+            color: #00FFFF;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ===== TAB NAVIGATION ===== */
+        .tab-navigation {
+            background: #000000;
+            border: 2px solid #FFFFFF;
+            margin-bottom: 8px;
+            display: flex;
+            gap: 0;
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: #000000;
+            border: none;
+            border-right: 2px solid #FFFFFF;
+            color: #FFFFFF;
+            padding: 12px 16px;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.1s;
+            letter-spacing: 0.5px;
+        }
+
+        .tab-btn:last-child {
+            border-right: none;
+        }
+
+        .tab-btn:hover {
+            background: #1a1a1a;
+        }
+
+        .tab-btn.active {
+            background: #FFFFFF;
+            color: #000000;
+        }
+
+        /* ===== STATE PANELS ===== */
+        .error-panel {
+            background: #000000;
+            border: 2px solid #FF0000;
+            padding: 12px;
+            margin-bottom: 8px;
+        }
+
+        .error-title {
+            color: #FF0000;
+            font-weight: 700;
+            font-size: 13px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            letter-spacing: 1px;
+        }
+
+        .error-text {
+            color: #FFFFFF;
+            font-size: 11px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+        }
+
+        .loading-panel {
+            background: #000000;
+            border: 2px solid #FFFF00;
+            padding: 24px;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .loading-spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid #333333;
+            border-top: 3px solid #FFFF00;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #FFFF00;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* ===== MAIN DISPLAY ===== */
+        .primary-display {
+            background: #000000;
+            border: 2px solid #FFFFFF;
+            margin-bottom: 8px;
+            overflow: hidden;
+        }
+
+        .display-header {
+            background: #1a1a1a;
+            border-bottom: 1px solid #FFFFFF;
+            padding: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .airport-id {
+            font-size: 18px;
+            font-weight: 700;
+            color: #FFFFFF;
+            letter-spacing: 1px;
+        }
+
+        .airport-name {
+            font-size: 11px;
+            color: #00FFFF;
+            text-transform: uppercase;
+        }
+
+        .validity-info {
+            text-align: right;
+        }
+
+        .validity-label {
+            font-size: 10px;
+            color: #FFFFFF;
+            text-transform: uppercase;
+        }
+
+        .validity-times {
+            font-size: 12px;
+            color: #00FFFF;
+            font-weight: 700;
+        }
+
+        /* ===== FORECAST TABLE ===== */
+        .forecast-table-container {
+            background: #000000;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .forecast-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .forecast-table th {
+            background: #1a1a1a;
+            border: 1px solid #FFFFFF;
+            padding: 8px 10px;
+            font-size: 18px;
+            font-weight: 700;
+            color: #FFFFFF;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: left;
+            vertical-align: middle;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            height: 44px;
+        }
+
+        .forecast-table th:nth-child(1) { width: 10%; }
+        .forecast-table th:nth-child(2) { width: 12%; }
+        .forecast-table th:nth-child(3) { width: 22%; }
+        .forecast-table th:nth-child(4) { width: 8%; }
+        .forecast-table th:nth-child(5) { width: 10%; }
+        .forecast-table th:nth-child(6) { width: 10%; }
+        .forecast-table th:nth-child(7) { width: 6%; }
+        .forecast-table th:nth-child(8) { width: 6%; }
+
+        .forecast-table td {
+            border: 1px solid #333333;
+            padding: 10px 12px;
+            font-size: 18px;
+            background: #000000;
+            vertical-align: middle;
+            height: 48px;
+        }
+
+        .forecast-table td:first-child {
+            background: #0a0a0a;
+            border-right: 1px solid #FFFFFF;
+            font-weight: 700;
+            color: #FF00FF;
+            text-transform: uppercase;
+        }
+
+        .forecast-table tr:hover td {
+            background: #1a1a1a;
+        }
+
+        /* ===== TABLE CELL TYPES ===== */
+        .time-column {
+            font-size: 16px;
+            color: #FF00FF;
+            text-align: center;
+            line-height: 1.3;
+            font-weight: 700;
+        }
+
+        .time-column-narrow {
+            display: none;
+        }
+
+        .flight-category-cell {
+            text-align: center;
+        }
+
+        .flight-category-badge {
+            padding: 3px 6px;
+            font-size: 18px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: 1px solid;
+            display: inline-block;
+            border-radius: 2px;
+        }
+
+        .vfr-badge {
+            background: #00FF00;
+            color: #000000;
+            border-color: #00FF00;
+        }
+
+        .mvfr-badge {
+            background: #0077ff;
+            color: #000000;
+            border-color: #0077ff;
+        }
+
+        .ifr-badge {
+            background: #ff0000;
+            color: #000000;
+            border-color: #ff0000;
+        }
+
+        .lifr-badge {
+            background: #ff00ff;
+            color: #000000;
+            border-color: #ff00ff;
+        }
+
+        .unk-badge {
+            background: #808080;
+            color: #FFFFFF;
+            border-color: #808080;
+        }
+
+        .weather-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .weather-icon {
+            font-size: 20px;
+            min-width: 24px;
+            color: #00FFFF;
+        }
+
+        .weather-text {
+            font-size: 18px;
+            color: #FFFFFF;
+            line-height: 1.3;
+            white-space: normal;
+            word-break: break-word;
+            max-width: 28ch;
+        }
+
+        .forecast-table td:nth-child(3),
+        .forecast-table th:nth-child(3) {
+            padding-left: 8px;
+            padding-right: 8px;
+        }
+
+        .prob-text {
+            color: #FFFF00;
+        }
+
+        .data-cell {
+            font-size: 18px;
+            font-weight: 700;
+            color: #00FFFF;
+            text-align: center;
+        }
+
+        .wind-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .wind-arrow {
+            font-size: 18px;
+            color: #00FFFF;
+            min-width: 20px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease;
+        }
+
+        .wind-arrow i {
+            display: block;
+            line-height: 1;
+        }
+
+        .wind-circle {
+            width: 22px;
+            height: 22px;
+            border: 3px solid #00FFFF;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #00FFFF;
+            font-weight: 700;
+            min-width: 22px;
+        }
+
+        .wind-data {
+            font-size: 18px;
+            color: #00FFFF;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .gust-warning {
+            color: #FF0000;
+            display: flex;
+            font-weight: 700;
+            font-size: 18px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ===== RAW DATA PANEL ===== */
+        .raw-data-panel {
+            background: #000000;
+            border: 2px solid #FFFFFF;
+            overflow: hidden;
+        }
+
+        .raw-header {
+            background: #1a1a1a;
+            border-bottom: 1px solid #FFFFFF;
+            padding: 12px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #FFFFFF;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .raw-content {
+            background: #0a0a0a;
+            padding: 12px;
+            overflow-x: auto;
+        }
+
+        .raw-text {
+            font-family: 'Roboto Mono', monospace;
+            color: #00FF00;
+            font-size: 11px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* ===== SHARED PANEL STYLES ===== */
+        .panel {
+            background: #000000;
+            border: 2px solid #FFFFFF;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            background: #1a1a1a;
+            border-bottom: 1px solid #FFFFFF;
+            padding: 12px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #FFFFFF;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .panel-content {
+            background: #0a0a0a;
+            padding: 12px;
+            color: #00FFFF;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        /* ===== AIRPORT INFO PANEL ===== */
+        .airport-panel {
+            background: #000000;
+            border: 2px solid #FFFFFF;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .airport-header {
+            background: #1a1a1a;
+            border-bottom: 1px solid #FFFFFF;
+            padding: 12px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #FFFFFF;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .airport-content {
+            background: #0a0a0a;
+            padding: 12px;
+            color: #00FFFF;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            align-items: start;
+        }
+
+        @media (max-width: 768px) {
+            .airport-content { grid-template-columns: 1fr; }
+            .runway-results { max-height: none; }
+        }
+
+        .airport-summary { display: flex; flex-direction: column; gap: 6px; }
+        .airport-kv { display: block; gap: 8px; align-items: baseline; }
+        .airport-key { color: #AAAAAA; min-width: 90px; font-size: 11px; }
+        .airport-val { color: #00FFFF;font-size: 11px; font-weight: 700; }
+
+        .runway-results { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+        .runway-block { background: #070707; display: flex; flex-direction: column; gap: 6px; }
+        .runway-id { color: #FFFF00; font-weight: 800; }
+        .runway-end-row { display: flex; gap: 10px; align-items: center; }
+        .runway-end-name { color: #FFFFFF; min-width: 20px; font-weight: 700; }
+        .runway-end-stats { color: #00FFFF; font-weight: 700; }
+        .runway-end-cross { color: #ffffff; font-weight: 700; }
+        .selected-row td { background: #222233 !important; }
+        .runway-result-end { color: #00FF66; font-weight: 700; margin-left: 8px; }
+        .airport-info-small { color: #AAAAAA; font-size: 12px; white-space: pre-line; margin-top: 6px; }
+
+        /* ===== METAR & PIREP DISPLAYS ===== */
+        .metar-display, .pirep-display {
+            background: #000000;
+            border: 2px solid #FFFFFF;
+            margin-bottom: 8px;
+            overflow: hidden;
+        }
+
+        .metar-content, .pirep-content {
+            background: #0a0a0a;
+            padding: 16px;
+            color: #00FFFF;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .metar-content .data-row,
+        .pirep-content .data-row {
+            margin-bottom: 12px;
+        }
+
+        .metar-content .data-label,
+        .pirep-content .data-label {
+            color: #AAAAAA;
+            font-size: 11px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .metar-content .data-value,
+        .pirep-content .data-value {
+            color: #00FFFF;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .pirep-item {
+            background: #070707;
+            border: 1px solid #333333;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .pirep-item:last-child {
+            margin-bottom: 0;
+        }
+
+        /* ===== RESPONSIVE DESIGN ===== */
+        @media (max-width: 768px) {
+            .time-column {
+                display: none;
+            }
+
+            .time-column-narrow {
+                display: block;
+                font-size: 13px;
+                color: #FF00FF;
+                text-align: center;
+                line-height: 1.2;
+                font-weight: 700;
+            }
+
+            .forecast-table th {
+                padding: 3px 6px;
+                font-size: 14px;
+                height: 32px;
+            }
+
+            .forecast-table td {
+                padding: 3px 6px;
+                font-size: 14px;
+                height: 34px;
+            }
+
+            .weather-cell { gap: 6px; }
+            .weather-icon { font-size: 14px; min-width: 18px; }
+            .weather-text { font-size: 14px; }
+            .flight-category-badge { font-size: 14px; padding: 2px 4px; }
+            .data-cell { font-size: 14px; }
+            .wind-arrow { font-size: 14px; min-width: 16px; }
+            .wind-circle { width: 18px; height: 18px; border: 2px solid #00FFFF; font-size: 14px; min-width: 18px; }
+            .wind-data { font-size: 14px; }
+            .gust-warning { font-size: 14px; }
+        }
+
+        @media (max-width: 480px) {
+            .time-column-narrow { font-size: 11px; }
+            .forecast-table th { font-size: 12px; padding: 2px 4px; height: 30px; }
+            .forecast-table td { font-size: 12px; padding: 2px 4px; height: 32px; }
+            .flight-category-badge { font-size: 12px; padding: 2px 4px; }
+            .weather-icon { font-size: 12px; min-width: 16px; }
+            .weather-text { font-size: 12px; }
+            .wind-arrow { font-size: 12px; min-width: 14px; }
+            .wind-circle { width: 16px; height: 16px; font-size: 12px; min-width: 16px; }
+            .wind-data { font-size: 12px; }
+            .data-cell { font-size: 12px; }
+            .gust-warning { font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="avionics-container">
+        <!-- Header Controls -->
+        <div class="avionics-header">
+            <div>
+                <div class="avionics-title">AVIATION WEATHER</div>
+                <div id="statusDisplay" class="status-display"></div>
+            </div>
+
+            <div class="avionics-controls">
+                <div class="control-group">
+                    <input id="icaoInput" class="avionics-input" type="text" value="KALB" placeholder="KALB" maxLength="4" />
+                </div>
+                <button id="refreshBtn" class="avionics-btn">REFRESH</button>
+            </div>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="tab-navigation">
+            <button class="tab-btn active" data-tab="taf">TAF</button>
+            <button class="tab-btn" data-tab="metar">METAR</button>
+            <button class="tab-btn" data-tab="pirep">PIREP</button>
+        </div>
+
+        <!-- Error Panel -->
+        <div id="errorPanel" class="error-panel hidden">
+            <div class="error-title">⚠ SYSTEM ERROR</div>
+            <div id="errorText" class="error-text"></div>
+        </div>
+
+        <!-- Loading Panel -->
+        <div id="loadingPanel" class="loading-panel hidden">
+            <div class="loading-spinner"></div>
+            <div id="loadingText" class="loading-text">ACQUIRING DATA</div>
+        </div>
+
+        <!-- TAF View -->
+        <div id="tafView" class="view-content">
+            <!-- Main Display -->
+            <div id="primaryDisplay" class="primary-display hidden">
+                <div class="display-header">
+                    <div>
+                        <div id="airportId" class="airport-id"></div>
+                        <div id="airportName" class="airport-name"></div>
+                    </div>
+                    <div class="validity-info">
+                        <div class="validity-label">VALID PERIOD</div>
+                        <div id="validityTimes" class="validity-times"></div>
+                    </div>
+                </div>
+
+                <div class="forecast-table-container">
+                    <table class="forecast-table">
+                        <thead>
+                            <tr>
+                                <th>TIME</th>
+                                <th>CAT</th>
+                                <th>WEATHER</th>
+                                <th>VIS</th>
+                                <th>BASE</th>
+                                <th>WIND</th>
+                                <th>SPD</th>
+                                <th>GUST</th>
+                            </tr>
+                        </thead>
+                        <tbody id="forecastTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Runway Wind Panel -->
+            <div id="windPanel" class="airport-panel panel hidden">
+                <div class="airport-header panel-header">RUNWAY WIND</div>
+                <div class="airport-content panel-content">
+                    <div class="airport-summary">
+                        <div class="runway-results" id="runwayResults"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Raw Data Panel -->
+            <div id="rawDataPanel" class="raw-data-panel panel hidden">
+                <div class="raw-header panel-header">RAW TAF DATA</div>
+                <div class="raw-content panel-content">
+                    <div id="rawText" class="raw-text"></div>
+                </div>
+            </div>
+
+            <!-- Airport Info Panel -->
+            <div id="airportPanel" class="airport-panel panel hidden">
+                <div class="airport-header panel-header">AIRPORT INFORMATION</div>
+                <div class="airport-content panel-content">
+                    <div class="airport-summary">
+                        <div class="airport-kv"><div class="airport-key">ICAO</div><div id="airportIcao" class="airport-val">-</div></div>
+                        <div class="airport-kv"><div class="airport-key">Name</div><div id="airportFullName" class="airport-val">-</div></div>
+                        <div class="airport-kv"><div class="airport-key">Location</div><div id="airportLocation" class="airport-val">-</div></div>
+                        <div class="airport-kv"><div class="airport-key">Elev</div><div id="airportElev" class="airport-val">-</div></div>
+                        <div class="airport-kv"><div class="airport-key">Coords</div><div id="airportCoords" class="airport-val">-</div></div>
+                        <div class="airport-kv"><div class="airport-key">Freqs</div><div id="airportFreqs" class="airport-val">-</div></div>
+                        <div class="airport-kv"><div class="airport-key">MagVar</div><div id="airportMagVar" class="airport-val">-</div></div>
+                        <div class="airport-kv"><div class="airport-key">Runways</div><div id="airportRunways" class="airport-val">-</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- METAR View -->
+        <div id="metarView" class="view-content hidden">
+            <div id="metarDisplay" class="metar-display hidden">
+                <div class="display-header">
+                    <div>
+                        <div id="metarAirportId" class="airport-id"></div>
+                        <div id="metarAirportName" class="airport-name"></div>
+                    </div>
+                    <div class="validity-info">
+                        <div class="validity-label">OBSERVATION TIME</div>
+                        <div id="metarObsTime" class="validity-times"></div>
+                    </div>
+                </div>
+                <div class="metar-content" id="metarContent"></div>
+            </div>
+
+            <div id="metarRawPanel" class="raw-data-panel panel hidden">
+                <div class="raw-header panel-header">RAW METAR DATA</div>
+                <div class="raw-content panel-content">
+                    <div id="metarRawText" class="raw-text"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PIREP View -->
+        <div id="pirepView" class="view-content hidden">
+            <div id="pirepDisplay" class="pirep-display hidden">
+                <div class="display-header">
+                    <div>
+                        <div id="pirepAirportId" class="airport-id"></div>
+                        <div class="airport-name">PILOT REPORTS</div>
+                    </div>
+                </div>
+                <div class="pirep-content" id="pirepContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== CONSTANTS & CONFIG =====
+        const CONFIG = {
+            DEFAULT_ICAO: 'KALB',
+            MAX_HOURS_FORECAST: 48,
+            UPDATE_TIMEOUT: 30000
+        };
+
+        // ===== GLOBAL STATE =====
+        let currentIcao = CONFIG.DEFAULT_ICAO;
+        let currentTab = 'taf';
+        let browserTimezone = '';
+        let browserTimezoneShort = '';
+
+        // ===== UTILITY FUNCTIONS =====
+        const Utils = {
+            showElement(id) {
+                document.getElementById(id)?.classList.remove('hidden');
+            },
+
+            hideElement(id) {
+                document.getElementById(id)?.classList.add('hidden');
+            },
+
+            updateUrl() {
+                const url = new URL(window.location);
+                url.searchParams.set('icao', currentIcao);
+                url.searchParams.set('tab', currentTab);
+                window.history.replaceState({}, '', url);
+            },
+
+            getBrowserTimezone() {
+                try {
+                    browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                    const testDate = new Date();
+                    const tzString = testDate.toLocaleTimeString('en-US', {
+                        timeZoneName: 'short',
+                        timeZone: browserTimezone
+                    });
+                    const match = tzString.match(/\b([A-Z]{2,5})\b$/);
+                    browserTimezoneShort = match ? match[1] : 'LT';
+                } catch (e) {
+                    browserTimezone = 'Local';
+                    browserTimezoneShort = 'LT';
+                }
+            },
+
+            getTimezoneShortName(date) {
+                try {
+                    const tzString = date.toLocaleTimeString('en-US', {
+                        timeZoneName: 'short',
+                        timeZone: browserTimezone
+                    });
+                    const match = tzString.match(/\b([A-Z]{2,5})\b$/);
+                    return match ? match[1] : 'LT';
+                } catch (e) {
+                    return 'LT';
+                }
+            },
+
+            formatDateTime(date) {
+                const day = date.getDate().toString().padStart(2, '0');
+                const hours = date.getHours().toString().padStart(2, '0');
+                const minutes = date.getMinutes().toString().padStart(2, '0');
+                const tz = this.getTimezoneShortName(date);
+                return `${day}/${hours}:${minutes} ${tz}`;
+            },
+
+            formatTimeOnly(date) {
+                const hours = date.getHours().toString().padStart(2, '0');
+                const minutes = date.getMinutes().toString().padStart(2, '0');
+                return `${hours}${minutes}`;
+            },
+
+            formatTimeWithTimezone(date) {
+                const timeStr = this.formatTimeOnly(date);
+                const tz = this.getTimezoneShortName(date);
+                return `${timeStr}`;
+            },
+
+            isDayTime(date) {
+                const hour = date.getHours();
+                return hour >= 6 && hour < 18;
+            }
+        };
+
+        // ===== WEATHER PARSING =====
+        const WeatherParser = {
+            getSimpleWeatherIcon(wxString, cloudCover, isDaytime) {
+                if (!wxString || wxString.trim() === '') {
+                    return this.getCloudIcon(cloudCover, isDaytime);
+                }
+
+                const wx = wxString.toUpperCase();
+
+                if (wx.includes('TS')) return 'fas fa-bolt';
+
+                if (wx.includes('RA') || wx.includes('DZ')) {
+                    if (wx.includes('SH')) return 'fas fa-cloud-showers-heavy';
+                    if (wx.includes('FZ')) return 'fas fa-icicles';
+                    return 'fas fa-cloud-rain';
+                }
+
+                if (wx.includes('SN') || wx.includes('SG') || wx.includes('IC')) {
+                    if (wx.includes('SH')) return 'fas fa-cloud-snow';
+                    return 'fas fa-snowflake';
+                }
+
+                if (wx.includes('GR') || wx.includes('GS') || wx.includes('PL')) {
+                    return 'fas fa-cloud-meatball';
+                }
+
+                if (wx.includes('FG') || wx.includes('BR')) return 'fas fa-smog';
+
+                if (wx.includes('HZ') || wx.includes('FU') || wx.includes('DU') || wx.includes('SA')) {
+                    return 'fas fa-smog';
+                }
+
+                if (wx.includes('SQ') || wx.includes('FC') || wx.includes('DS') || wx.includes('SS')) {
+                    return 'fas fa-wind';
+                }
+
+                return 'fas fa-cloud';
+            },
+
+            getCloudIcon(cloudCover, isDaytime) {
+                switch (cloudCover) {
+                    case 'SKC':
+                    case 'CLR':
+                        return isDaytime ? 'fas fa-sun' : 'fas fa-moon';
+                    case 'FEW':
+                        return isDaytime ? 'fas fa-sun' : 'fas fa-moon';
+                    case 'SCT':
+                        return isDaytime ? 'fas fa-cloud-sun' : 'fas fa-cloud-moon';
+                    case 'BKN':
+                    case 'OVC':
+                        return 'fas fa-cloud';
+                    default:
+                        return 'fas fa-cloud';
+                }
+            },
+
+            determineFlightCategory(visibility, ceiling, cloudCover) {
+                if (visibility === 'UNK' || ceiling === 'UNK' || cloudCover === 'UNK') {
+                    return 'UNK';
+                }
+
+                const visNum = parseFloat(visibility.replace('+', '')) || 0;
+                const ceilNum = (ceiling === 'CLR' || ceiling === 'UNK') ? 10000 : parseInt(ceiling) || 0;
+
+                if (ceilNum < 500 || visNum < 1) return 'LIFR';
+                if (ceilNum < 1000 || visNum < 3) return 'IFR';
+                if (ceilNum < 3000 || visNum <= 5) return 'MVFR';
+                return 'VFR';
+            },
+
+            getWindDirectionIcon(direction) {
+                if (direction === 'VRB' || direction === 0) return null;
+
+                const dir = parseInt(direction);
+                if (isNaN(dir)) return null;
+
+                const displayDirection = (dir + 180) % 360;
+                return {
+                    icon: 'fas fa-arrow-up',
+                    rotation: displayDirection
+                };
+            }
+        };
+
+        // ===== TAF DATA PROCESSING =====
+        const TafProcessor = {
+            generateHourlyForecast(fcsts, validFromTime, validToTime) {
+                const hourlyForecast = [];
+                let currentTime = new Date(validFromTime);
+
+                while (currentTime < validToTime) {
+                    const applicableForecast = this.findApplicableForecast(fcsts, currentTime);
+
+                    if (applicableForecast) {
+                        const period = this.createForecastPeriod(currentTime, applicableForecast);
+                        hourlyForecast.push(period);
+                    }
+
+                    currentTime = new Date(currentTime.getTime() + 60 * 60 * 1000);
+                }
+
+                return hourlyForecast;
+            },
+
+            findApplicableForecast(fcsts, targetTime) {
+                const targetTimestamp = Math.floor(targetTime.getTime() / 1000);
+
+                if (!fcsts || fcsts.length === 0) return null;
+
+                const baseline = fcsts.find(f => f.timeGroup === 0) || fcsts[0];
+
+                let specific = null;
+                let probForecast = null;
+
+                for (const fcst of fcsts) {
+                    if (fcst.fcstChange === 'PROB') {
+                        if (fcst.timeFrom <= targetTimestamp && (fcst.timeTo >= targetTimestamp || fcst.timeTo === null)) {
+                            probForecast = fcst;
+                        }
+                        continue;
+                    }
+
+                    if (fcst.timeFrom <= targetTimestamp && (fcst.timeTo >= targetTimestamp || fcst.timeTo === null)) {
+                        specific = { ...specific, ...fcst };
+                    }
+                }
+
+                let merged = { ...(baseline || {}) };
+                if (specific) {
+                    for (const key of Object.keys(specific)) {
+                        const val = specific[key];
+                        const isStringEmpty = (typeof val === 'string') && val.trim() === '';
+                        if (val !== null && val !== undefined && !isStringEmpty) {
+                            merged[key] = val;
+                        }
+                    }
+
+                    try {
+                        const isFromChange = specific.fcstChange && String(specific.fcstChange).toUpperCase().startsWith('FM');
+                        if (isFromChange) {
+                            if (!Object.prototype.hasOwnProperty.call(specific, 'wgst') || specific.wgst === '' || specific.wgst === null || specific.wgst === undefined) {
+                                merged.wgst = null;
+                            }
+                        }
+                    } catch (e) {
+                        // non-fatal
+                    }
+                }
+
+                if (probForecast) merged.probForecast = probForecast;
+
+                return merged;
+            },
+
+            createForecastPeriod(validTime, forecastData) {
+                const timeStr = Utils.formatTimeWithTimezone(validTime);
+                const dayStr = validTime.toLocaleDateString('en', { weekday: 'short' }).toUpperCase().slice(0, 3);
+                const isDaytime = Utils.isDayTime(validTime);
+
+                const windDir = forecastData.wdir !== null && forecastData.wdir !== undefined ? forecastData.wdir : 0;
+                const windSpeed = forecastData.wspd !== null && forecastData.wspd !== undefined ? forecastData.wspd : 0;
+                const windGusts = forecastData.wgst !== null && forecastData.wgst !== undefined ? forecastData.wgst : null;
+
+                let visibility = 'UNK';
+                if (forecastData.visib !== null && forecastData.visib !== undefined) {
+                    const visRaw = typeof forecastData.visib === 'string' ? forecastData.visib.trim() : String(forecastData.visib);
+                    if (visRaw === '') {
+                        visibility = 'UNK';
+                    } else if (visRaw === '6+') {
+                        visibility = '6+';
+                    } else if (!isNaN(Number(visRaw)) && visRaw !== '6+') {
+                        visibility = visRaw;
+                    } else {
+                        visibility = visRaw.replace(/SM$/i, '').trim() || 'UNK';
+                    }
+                }
+
+                let ceiling = 'UNK';
+                let cloudCover = 'UNK';
+                if (forecastData.clouds && Array.isArray(forecastData.clouds) && forecastData.clouds.length > 0) {
+                    for (const cloud of forecastData.clouds) {
+                        if (cloud && cloud.cover && cloud.cover !== 'SKC' && cloud.base !== null && cloud.base !== undefined) {
+                            ceiling = cloud.base.toString();
+                            cloudCover = cloud.cover;
+                            break;
+                        }
+                    }
+                    if (ceiling === 'UNK') {
+                        const clearClouds = forecastData.clouds.find(cloud => cloud && cloud.cover === 'SKC');
+                        if (clearClouds) {
+                            ceiling = 'CLR';
+                            cloudCover = 'SKC';
+                        }
+                    }
+                } else {
+                    ceiling = 'UNK';
+                    cloudCover = 'UNK';
+                }
+
+                const flightCategory = WeatherParser.determineFlightCategory(visibility, ceiling, cloudCover);
+
+                let weatherParts = [];
+                let wxString = forecastData.wxString !== null && forecastData.wxString !== undefined ? forecastData.wxString.trim() : '';
+                let probability = null;
+
+                if (forecastData.probForecast) {
+                    const probData = forecastData.probForecast;
+                    probability = probData.probability;
+
+                    if (probData.wxString && probData.wxString.trim() !== '') {
+                        wxString = probData.wxString.trim();
+                    }
+
+                    if (probData.clouds && Array.isArray(probData.clouds) && probData.clouds.length > 0) {
+                        for (const cloud of probData.clouds) {
+                            if (cloud && cloud.cover) {
+                                cloudCover = cloud.cover;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (wxString !== '') {
+                    weatherParts.push(wxString);
+                }
+
+                if (probability) {
+                    weatherParts.push(`${probability}%`);
+                }
+
+                weatherParts.push(cloudCover);
+
+                const weatherText = weatherParts.join(' ');
+                const weatherIcon = WeatherParser.getSimpleWeatherIcon(wxString, cloudCover, isDaytime);
+
+                return {
+                    time: `${dayStr} ${timeStr}`,
+                    timeNarrow: `${dayStr}<br/>${timeStr}`,
+                    flightCategory,
+                    weather: weatherText,
+                    weatherIcon: weatherIcon,
+                    visibility,
+                    ceiling,
+                    windDir,
+                    windSpeed,
+                    windGusts
+                };
+            }
+        };
+
+        // ===== API FUNCTIONS =====
+        const Api = {
+            async fetchTafData(icao) {
+                try {
+                    const apiUrl = `https://aviationweather.gov/api/data/taf?ids=${icao}&format=json`;
+                    const response = await fetch(`https://cors.hisenz.com/?url=${encodeURIComponent(apiUrl)}`);
+
+                    if (!response.ok) {
+                        const txt = await response.text();
+                        throw new Error(`HTTP ${response.status}: ${txt}`);
+                    }
+
+                    const jsonData = await response.json();
+
+                    if (!jsonData || !Array.isArray(jsonData) || jsonData.length === 0) {
+                        throw new Error('No TAF data available for this airport');
+                    }
+
+                    return { json: jsonData[0] };
+                } catch (err) {
+                    throw new Error(`Network error: ${err.message}`);
+                }
+            },
+
+            async fetchMetarData(icao) {
+                try {
+                    const apiUrl = `https://aviationweather.gov/api/data/metar?ids=${icao}&format=json`;
+                    const response = await fetch(`https://cors.hisenz.com/?url=${encodeURIComponent(apiUrl)}`);
+
+                    if (!response.ok) {
+                        const txt = await response.text();
+                        throw new Error(`HTTP ${response.status}: ${txt}`);
+                    }
+
+                    const jsonData = await response.json();
+
+                    if (!jsonData || !Array.isArray(jsonData) || jsonData.length === 0) {
+                        throw new Error('No METAR data available for this airport');
+                    }
+
+                    return jsonData[0];
+                } catch (err) {
+                    throw new Error(`Network error: ${err.message}`);
+                }
+            },
+
+            async fetchPirepData(icao) {
+                try {
+                    // PIREP requires id + distance for center point search
+                    const apiUrl = `https://aviationweather.gov/api/data/pirep?id=${icao}&distance=50&format=json`;
+                    const response = await fetch(`https://cors.hisenz.com/?url=${encodeURIComponent(apiUrl)}`);
+
+                    if (!response.ok) {
+                        const txt = await response.text();
+                        throw new Error(`HTTP ${response.status}: ${txt}`);
+                    }
+
+                    const text = await response.text();
+
+                    // Check if response is empty or not valid JSON
+                    if (!text || text.trim() === '') {
+                        return []; // Return empty array, no PIREPs available
+                    }
+
+                    const jsonData = JSON.parse(text);
+
+                    if (!jsonData || !Array.isArray(jsonData) || jsonData.length === 0) {
+                        return []; // Return empty array instead of throwing error
+                    }
+
+                    return jsonData;
+                } catch (err) {
+                    if (err instanceof SyntaxError) {
+                        // JSON parse error - probably no PIREPs available
+                        return [];
+                    }
+                    throw new Error(`Network error: ${err.message}`);
+                }
+            },
+
+            async fetchAirport(icao) {
+                try {
+                    const apiUrl = `https://aviationweather.gov/api/data/airport?ids=${icao}&format=json`;
+                    const response = await fetch(`https://cors.hisenz.com/?url=${encodeURIComponent(apiUrl)}`);
+
+                    if (!response.ok) return null;
+
+                    const jsonData = await response.json();
+
+                    if (!Array.isArray(jsonData) || jsonData.length === 0) return null;
+
+                    return jsonData[0];
+                } catch (e) {
+                    console.warn('Airport fetch failed:', e.message);
+                    return null;
+                }
+            }
+        };
+
+        // Wind math helpers
+        function computeWindComponents(runwayAlignDeg, windDirDeg, windSpeedKt) {
+            const r = Number(runwayAlignDeg);
+            const w = Number(windDirDeg);
+            const s = Number(windSpeedKt);
+            if (isNaN(r) || isNaN(w) || isNaN(s) || s === 0) return { headTail: 0, cross: 0 };
+
+            let diff = ((w - r + 540) % 360) - 180;
+
+            const headTail = Math.round((-Math.cos(diff * Math.PI / 180)) * s);
+            const cross = Math.round((Math.sin(diff * Math.PI / 180)) * s);
+            return { headTail, cross };
+        }
+
+        function padRunwayReciprocal(runwayToken) {
+            if (!runwayToken) return '';
+            const m = runwayToken.match(/(\d{2})([A-Z])?/i);
+            if (!m) return runwayToken;
+            const num = Number(m[1]);
+            const letter = m[2] || '';
+            const rec = ((num + 18) % 36) || 36;
+            const recStr = rec.toString().padStart(2, '0');
+            return `${recStr}${letter}`;
+        }
+
+        // ===== UI FUNCTIONS =====
+        const UI = {
+            showError(message) {
+                document.getElementById('errorText').textContent = message;
+                Utils.showElement('errorPanel');
+                Utils.hideElement('loadingPanel');
+                this.hideAllViews();
+            },
+
+            showLoading(text = 'ACQUIRING DATA') {
+                document.getElementById('loadingText').textContent = text;
+                Utils.showElement('loadingPanel');
+                Utils.hideElement('errorPanel');
+                this.hideAllViews();
+                document.getElementById('refreshBtn').disabled = true;
+            },
+
+            hideLoading() {
+                Utils.hideElement('loadingPanel');
+                document.getElementById('refreshBtn').disabled = false;
+            },
+
+            hideAllViews() {
+                // TAF view elements
+                Utils.hideElement('primaryDisplay');
+                Utils.hideElement('rawDataPanel');
+                Utils.hideElement('windPanel');
+                Utils.hideElement('airportPanel');
+
+                // METAR view elements
+                Utils.hideElement('metarDisplay');
+                Utils.hideElement('metarRawPanel');
+
+                // PIREP view elements
+                Utils.hideElement('pirepDisplay');
+            },
+
+            updateStatus() {
+                document.getElementById('statusDisplay').textContent = `LAST UPDATE: ${new Date().toLocaleTimeString()}`;
+            },
+
+            displayTafData(data) {
+                document.getElementById('airportId').textContent = data.airport;
+                document.getElementById('airportName').textContent = data.airportName;
+                document.getElementById('validityTimes').textContent = `${data.validFrom} - ${data.validTo}`;
+
+                const raw = data.rawTaf || '';
+                const escapeHtml = (str) => str
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+
+                const safe = escapeHtml(raw);
+
+                let formatted = safe.replace(/(^|\s)(FM\d{2,6})/g, (m, p1, p2) => `${p1}<br/>&nbsp;&nbsp;&nbsp;&nbsp;${p2}`);
+                formatted = formatted.replace(/(^|\s)(TEMPO\b)/g, (m, p1, p2) => `${p1}<br/>&nbsp;&nbsp;&nbsp;&nbsp;${p2}`);
+                document.getElementById('rawText').innerHTML = formatted;
+
+                const tbody = document.getElementById('forecastTableBody');
+                tbody.innerHTML = '';
+
+                data.forecast.forEach(period => {
+                    const row = tbody.insertRow();
+
+                    row.insertCell().innerHTML = `
+                        <div class="time-column">${period.time}</div>
+                        <div class="time-column-narrow">${period.timeNarrow}</div>
+                    `;
+
+                    const flightCatClass = `${period.flightCategory.toLowerCase()}-badge`;
+                    row.insertCell().innerHTML = `<div class="flight-category-cell">
+                        <div class="flight-category-badge ${flightCatClass}">${period.flightCategory}</div>
+                    </div>`;
+
+                    row.insertCell().innerHTML = `<div class="weather-cell">
+                        <div class="weather-icon"><i class="${period.weatherIcon}"></i></div>
+                        <div class="weather-text">${period.weather}</div>
+                    </div>`;
+
+                    row.insertCell().innerHTML = `<div class="data-cell">${period.visibility}</div>`;
+
+                    row.insertCell().innerHTML = `<div class="data-cell">${period.ceiling}</div>`;
+
+                    let windDisplay;
+                    if (period.windDir === 'VRB' || period.windDir === 0) {
+                        windDisplay = `<div class="wind-cell">
+                            <div class="wind-circle"></div>
+                            <div class="wind-data">VRB</div>
+                        </div>`;
+                    } else {
+                        const windIconData = WeatherParser.getWindDirectionIcon(period.windDir);
+                        const windHeading = period.windDir.toString().padStart(3, '0');
+                        if (windIconData) {
+                            windDisplay = `<div class="wind-cell">
+                                <div class="wind-arrow" style="transform: rotate(${windIconData.rotation}deg);">
+                                    <i class="${windIconData.icon}"></i>
+                                </div>
+                                <div class="wind-data">${windHeading}</div>
+                            </div>`;
+                        } else {
+                            windDisplay = `<div class="wind-cell">
+                                <div class="wind-data">${windHeading}</div>
+                            </div>`;
+                        }
+                    }
+                    row.insertCell().innerHTML = windDisplay;
+
+                    row.insertCell().innerHTML = `<div class="data-cell">${period.windSpeed}</div>`;
+
+                    const gustText = period.windGusts ? `<div class="gust-warning">${period.windGusts}</div>` : '<div class="data-cell">-</div>';
+                    row.insertCell().innerHTML = gustText;
+
+                    row.style.cursor = 'pointer';
+                    row.addEventListener('click', () => {
+                        Array.from(tbody.rows).forEach(r => r.classList.remove('selected-row'));
+                        row.classList.add('selected-row');
+
+                        const resultsEl = document.getElementById('runwayResults');
+                        resultsEl.innerHTML = '';
+
+                        const runways = (App.currentAirport && App.currentAirport.runways) ? App.currentAirport.runways : [];
+                        if (!runways || runways.length === 0) {
+                            resultsEl.textContent = 'No runway data available for this airport.';
+                            Utils.showElement('windPanel');
+                            try { document.getElementById('windPanel').scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch(e) {}
+                            return;
+                        }
+
+                        const windDir = (period.windDir === 'VRB' || period.windDir === 0) ? null : Number(period.windDir);
+                        const windSpeed = Number(period.windSpeed) || 0;
+
+                        for (const rw of runways) {
+                            const idText = rw.id || rw.rwy || 'RWY';
+                            const ends = idText.split('/').map(s => s.trim()).filter(Boolean);
+                            const align = (rw.alignment !== undefined && rw.alignment !== null) ? Number(rw.alignment) : null;
+
+                            const block = document.createElement('div');
+                            block.className = 'runway-block';
+
+                            const title = document.createElement('div');
+                            title.className = 'runway-id';
+                            title.textContent = idText;
+                            block.appendChild(title);
+
+                            if (!windDir) {
+                                const p = document.createElement('div');
+                                p.className = 'runway-end-stats';
+                                p.textContent = `Wind variable/VRB — ${windSpeed} kt`;
+                                block.appendChild(p);
+                                resultsEl.appendChild(block);
+                                continue;
+                            }
+
+                            const endsToShow = [];
+                            if (align !== null && !isNaN(align)) {
+                                endsToShow.push({ name: ends[0] || idText, hdg: Math.round(align) });
+                                endsToShow.push({ name: ends[1] || padRunwayReciprocal(ends[0] || idText), hdg: Math.round((align + 180) % 360) });
+                            } else {
+                                for (let i = 0; i < Math.max(ends.length, 2); i++) {
+                                    const token = ends[i] || ends[0];
+                                    const m = token ? token.match(/(\d{2})/) : null;
+                                    if (m) endsToShow.push({ name: token, hdg: (Number(m[1]) * 10) % 360 });
+                                }
+                            }
+
+                            if (endsToShow.length === 0) {
+                                const p = document.createElement('div');
+                                p.className = 'runway-end-stats';
+                                p.textContent = `No alignment available for ${idText}`;
+                                block.appendChild(p);
+                            } else {
+                                for (const e of endsToShow) {
+                                    const row = document.createElement('div');
+                                    row.className = 'runway-end-row';
+
+                                    const name = document.createElement('div');
+                                    name.className = 'runway-end-name';
+                                    name.textContent = `${e.name}`;
+
+                                    const stats = document.createElement('div');
+                                    stats.className = 'runway-end-stats';
+                                    const magVarLocal = (App.currentAirport && App.currentAirport._magVar) ? Number(App.currentAirport._magVar) : 0;
+                                    const runwayTrue = Number(e.hdg);
+                                    const runwayMag = Math.round((runwayTrue - magVarLocal + 360) % 360);
+                                    const windTrue = Number(windDir);
+                                    const windMag = Math.round((windTrue - magVarLocal + 360) % 360);
+
+                                    const comps = computeWindComponents(runwayMag, windMag, windSpeed);
+
+                                    const htSpan = document.createElement('span');
+                                    htSpan.textContent = `${comps.headTail >= 0 ? 'Head' : 'Tail'} ${Math.abs(comps.headTail)} kt`;
+
+                                    const sep = document.createElement('span');
+                                    sep.textContent = ', ';
+
+                                    const crossSpan = document.createElement('span');
+                                    crossSpan.className = 'runway-end-cross';
+                                    crossSpan.textContent = `${Math.abs(comps.cross)} kt ${comps.cross >= 0 ? 'from left' : 'from right'}`;
+
+                                    const hdgSpan = document.createElement('span');
+                                    hdgSpan.className = 'airport-key';
+
+                                    stats.appendChild(htSpan);
+                                    stats.appendChild(sep);
+                                    stats.appendChild(crossSpan);
+                                    stats.appendChild(hdgSpan);
+
+                                    row.appendChild(name);
+                                    row.appendChild(stats);
+                                    block.appendChild(row);
+                                }
+                            }
+
+                            resultsEl.appendChild(block);
+                        }
+
+                        Utils.showElement('windPanel');
+                        try { document.getElementById('windPanel').scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch(e) {}
+                    });
+                });
+
+                Utils.showElement('primaryDisplay');
+                Utils.showElement('rawDataPanel');
+                Utils.hideElement('errorPanel');
+            },
+
+            displayMetarData(data) {
+                document.getElementById('metarAirportId').textContent = data.icaoId || currentIcao;
+                document.getElementById('metarAirportName').textContent = data.name || 'UNKNOWN AIRPORT';
+
+                const obsTime = data.obsTime ? new Date(data.obsTime * 1000) : new Date();
+                document.getElementById('metarObsTime').textContent = Utils.formatDateTime(obsTime);
+
+                const content = document.getElementById('metarContent');
+                content.innerHTML = '';
+
+                // Calculate derived values
+                const tempC = data.temp !== undefined ? data.temp : null;
+                const dewpC = data.dewp !== undefined ? data.dewp : null;
+                const tempF = tempC !== null ? Math.round(tempC * 9/5 + 32) : null;
+                const dewpF = dewpC !== null ? Math.round(dewpC * 9/5 + 32) : null;
+
+                // Calculate spread
+                const spread = (tempC !== null && dewpC !== null) ? (tempC - dewpC).toFixed(1) : null;
+
+                // Calculate density altitude approximation
+                const altimInHg = data.altim || 29.92;
+                // Field elevation needs to come from airport data, not METAR data
+                // For now, we'll skip density altitude if we don't have reliable elevation
+                let densityAlt = null;
+                if (App.currentAirport && App.currentAirport.elev && tempC !== null) {
+                    const fieldElevFt = Math.round(App.currentAirport.elev * 3.28084); // Convert meters to feet
+                    const pressureAlt = fieldElevFt + (29.92 - altimInHg) * 1000;
+                    const isaTemp = 15 - (0.00198 * pressureAlt); // ISA temperature at pressure altitude
+                    densityAlt = Math.round(pressureAlt + 120 * (tempC - isaTemp));
+                }
+
+                // Format wind
+                let windText = '-';
+                if (data.wdir !== undefined && data.wspd !== undefined) {
+                    const dir = data.wdir === 0 ? 'VRB' : `${String(data.wdir).padStart(3, '0')}°`;
+                    const speed = data.wspd;
+                    const gust = data.wgst ? `G${data.wgst}` : '';
+                    windText = `${dir} at ${speed}${gust ? ' ' + gust : ''} kt`;
+                }
+
+                // Get flight category color
+                const getFltCatColor = (cat) => {
+                    const colors = {
+                        'VFR': '#00FF00',
+                        'MVFR': '#0077ff',
+                        'IFR': '#ff0000',
+                        'LIFR': '#ff00ff'
+                    };
+                    return colors[cat] || '#808080';
+                };
+
+                const fltCat = data.fltcat || 'UNK';
+                const fltCatColor = getFltCatColor(fltCat);
+
+                const fields = [
+                    {
+                        label: 'Flight Category',
+                        value: fltCat,
+                        color: fltCatColor
+                    },
+                    {
+                        label: 'Temperature',
+                        value: tempC !== null ? `${tempC}°C (${tempF}°F)` : '-'
+                    },
+                    {
+                        label: 'Dewpoint',
+                        value: dewpC !== null ? `${dewpC}°C (${dewpF}°F)` : '-'
+                    },
+                    {
+                        label: 'Temp/Dewpoint Spread',
+                        value: spread !== null ? `${spread}°C` : '-'
+                    },
+                    {
+                        label: 'Wind',
+                        value: windText
+                    },
+                    {
+                        label: 'Visibility',
+                        value: data.visib !== undefined ? (data.visib >= 10 ? '10+ SM' : `${data.visib} SM`) : '-'
+                    },
+                    {
+                        label: 'Altimeter',
+                        value: data.altim !== undefined ? `${data.altim.toFixed(2)} inHg (${Math.round(data.altim * 33.8639)} mb)` : '-'
+                    },
+                    {
+                        label: 'Density Altitude',
+                        value: densityAlt !== null ? `${densityAlt} ft` : '-'
+                    },
+                    {
+                        label: 'Sky Condition',
+                        value: this.formatClouds(data.clouds)
+                    },
+                    {
+                        label: 'Present Weather',
+                        value: data.wxString ? this.decodeWxString(data.wxString) : 'None reported'
+                    }
+                ];
+
+                fields.forEach(field => {
+                    const row = document.createElement('div');
+                    row.className = 'data-row';
+
+                    const label = document.createElement('div');
+                    label.className = 'data-label';
+                    label.textContent = field.label;
+
+                    const value = document.createElement('div');
+                    value.className = 'data-value';
+                    value.textContent = field.value;
+                    if (field.color) {
+                        value.style.color = field.color;
+                        value.style.fontWeight = '700';
+                    }
+
+                    row.appendChild(label);
+                    row.appendChild(value);
+                    content.appendChild(row);
+                });
+
+                // Raw METAR
+                const rawMetar = data.rawOb || data.raw_text || data.rawText || 'NO RAW DATA AVAILABLE';
+                document.getElementById('metarRawText').textContent = rawMetar;
+
+                Utils.showElement('metarDisplay');
+                Utils.showElement('metarRawPanel');
+                Utils.hideElement('errorPanel');
+            },
+
+            formatClouds(clouds) {
+                if (!clouds || !Array.isArray(clouds) || clouds.length === 0) return 'Clear';
+
+                const cloudLayers = clouds.map(c => {
+                    if (c.cover === 'SKC' || c.cover === 'CLR') return 'Clear';
+
+                    const coverNames = {
+                        'FEW': 'Few',
+                        'SCT': 'Scattered',
+                        'BKN': 'Broken',
+                        'OVC': 'Overcast',
+                        'VV': 'Vertical Visibility'
+                    };
+
+                    const coverText = coverNames[c.cover] || c.cover;
+                    const baseText = c.base !== undefined ? ` at ${c.base} ft` : '';
+                    return `${coverText}${baseText}`;
+                });
+
+                return cloudLayers.join(', ');
+            },
+
+            decodeWxString(wxString) {
+                if (!wxString || wxString.trim() === '') return 'None reported';
+
+                const wxCodes = {
+                    // Intensity
+                    '-': 'Light',
+                    '+': 'Heavy',
+                    'VC': 'Vicinity',
+
+                    // Descriptor
+                    'MI': 'Shallow',
+                    'PR': 'Partial',
+                    'BC': 'Patches',
+                    'DR': 'Low Drifting',
+                    'BL': 'Blowing',
+                    'SH': 'Showers',
+                    'TS': 'Thunderstorm',
+                    'FZ': 'Freezing',
+
+                    // Precipitation
+                    'DZ': 'Drizzle',
+                    'RA': 'Rain',
+                    'SN': 'Snow',
+                    'SG': 'Snow Grains',
+                    'IC': 'Ice Crystals',
+                    'PL': 'Ice Pellets',
+                    'GR': 'Hail',
+                    'GS': 'Small Hail',
+                    'UP': 'Unknown Precipitation',
+
+                    // Obscuration
+                    'BR': 'Mist',
+                    'FG': 'Fog',
+                    'FU': 'Smoke',
+                    'VA': 'Volcanic Ash',
+                    'DU': 'Dust',
+                    'SA': 'Sand',
+                    'HZ': 'Haze',
+                    'PY': 'Spray',
+
+                    // Other
+                    'PO': 'Dust Whirls',
+                    'SQ': 'Squalls',
+                    'FC': 'Funnel Cloud',
+                    'SS': 'Sandstorm',
+                    'DS': 'Duststorm'
+                };
+
+                let decoded = wxString;
+                for (const [code, desc] of Object.entries(wxCodes)) {
+                    decoded = decoded.replace(new RegExp(code, 'g'), desc);
+                }
+
+                return `${wxString} (${decoded})`;
+            },
+
+            displayPirepData(pireps) {
+                document.getElementById('pirepAirportId').textContent = currentIcao;
+
+                const content = document.getElementById('pirepContent');
+                content.innerHTML = '';
+
+                if (!pireps || pireps.length === 0) {
+                    content.innerHTML = '<div class="data-value">No pilot reports available</div>';
+                } else {
+                    pireps.forEach(pirep => {
+                        const item = document.createElement('div');
+                        item.className = 'pirep-item';
+
+                        const fields = [
+                            { label: 'Time', value: pirep.obsTime ? Utils.formatDateTime(new Date(pirep.obsTime * 1000)) : '-' },
+                            { label: 'Aircraft', value: pirep.acType || '-' },
+                            { label: 'Altitude', value: pirep.fltlvl !== undefined ? `${pirep.fltlvl} ft` : '-' },
+                            { label: 'Report', value: pirep.rawOb || pirep.pirep || '-' }
+                        ];
+
+                        fields.forEach(field => {
+                            const row = document.createElement('div');
+                            row.className = 'data-row';
+
+                            const label = document.createElement('div');
+                            label.className = 'data-label';
+                            label.textContent = field.label;
+
+                            const value = document.createElement('div');
+                            value.className = 'data-value';
+                            value.textContent = field.value;
+
+                            row.appendChild(label);
+                            row.appendChild(value);
+                            item.appendChild(row);
+                        });
+
+                        content.appendChild(item);
+                    });
+                }
+
+                Utils.showElement('pirepDisplay');
+                Utils.hideElement('errorPanel');
+            }
+        };
+
+        // ===== MAIN APPLICATION LOGIC =====
+        const App = {
+            currentAirport: null,
+
+            init() {
+                Utils.getBrowserTimezone();
+                this.setupEventListeners();
+                this.parseUrlParams();
+
+                if (currentIcao.length === 4) {
+                    this.fetchAndDisplayData(currentIcao, currentTab);
+                }
+            },
+
+            setupEventListeners() {
+                document.getElementById('icaoInput').addEventListener('input', this.handleIcaoInput.bind(this));
+                document.getElementById('refreshBtn').addEventListener('click', this.handleRefresh.bind(this));
+
+                // Tab navigation
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const tab = e.target.dataset.tab;
+                        this.switchTab(tab);
+                    });
+                });
+            },
+
+            parseUrlParams() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const icaoFromUrl = urlParams.get('icao');
+                const tabFromUrl = urlParams.get('tab');
+
+                if (icaoFromUrl && icaoFromUrl.length === 4) {
+                    currentIcao = icaoFromUrl.toUpperCase();
+                    document.getElementById('icaoInput').value = currentIcao;
+                }
+
+                if (tabFromUrl && ['taf', 'metar', 'pirep'].includes(tabFromUrl)) {
+                    currentTab = tabFromUrl;
+                    this.updateActiveTab();
+                }
+            },
+
+            handleIcaoInput(e) {
+                const value = e.target.value.toUpperCase().slice(0, 4);
+                e.target.value = value;
+                currentIcao = value;
+                Utils.updateUrl();
+
+                if (value.length === 4) {
+                    this.fetchAndDisplayData(value, currentTab);
+                }
+            },
+
+            handleRefresh() {
+                if (currentIcao && currentIcao.length === 4) {
+                    this.fetchAndDisplayData(currentIcao, currentTab);
+                }
+            },
+
+            switchTab(tab) {
+                currentTab = tab;
+                this.updateActiveTab();
+                Utils.updateUrl();
+
+                // Hide all view containers
+                document.getElementById('tafView').classList.add('hidden');
+                document.getElementById('metarView').classList.add('hidden');
+                document.getElementById('pirepView').classList.add('hidden');
+
+                // Show selected view
+                document.getElementById(`${tab}View`).classList.remove('hidden');
+
+                // Fetch data for the new tab
+                if (currentIcao && currentIcao.length === 4) {
+                    this.fetchAndDisplayData(currentIcao, tab);
+                }
+            },
+
+            updateActiveTab() {
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    if (btn.dataset.tab === currentTab) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+            },
+
+            async fetchAndDisplayData(icao, tab) {
+                const loadingMessages = {
+                    taf: 'ACQUIRING TAF DATA',
+                    metar: 'ACQUIRING METAR DATA',
+                    pirep: 'ACQUIRING PIREP DATA'
+                };
+
+                UI.showLoading(loadingMessages[tab] || 'ACQUIRING DATA');
+
+                try {
+                    if (tab === 'taf') {
+                        await this.fetchAndDisplayTaf(icao);
+                    } else if (tab === 'metar') {
+                        await this.fetchAndDisplayMetar(icao);
+                    } else if (tab === 'pirep') {
+                        await this.fetchAndDisplayPirep(icao);
+                    }
+
+                    UI.updateStatus();
+                } catch (err) {
+                    console.error(`${tab.toUpperCase()} fetch failed:`, err);
+                    UI.showError(`NO ${tab.toUpperCase()} DATA FOR ${icao}\nERROR: ${err.message}`);
+                } finally {
+                    UI.hideLoading();
+                }
+            },
+
+            async fetchAndDisplayTaf(icao) {
+                const { json: tafData } = await Api.fetchTafData(icao);
+                const airportMeta = await Api.fetchAirport(icao);
+                App.currentAirport = airportMeta;
+
+                const airport = tafData.icaoId || icao || 'UNK';
+                const airportName = tafData.name || 'UNKNOWN AIRPORT';
+                const validFromTime = tafData.validTimeFrom ? new Date(tafData.validTimeFrom * 1000) : new Date();
+                const validToTime = tafData.validTimeTo ? new Date(tafData.validTimeTo * 1000) : new Date();
+
+                const fcsts = tafData.fcsts && Array.isArray(tafData.fcsts) ? tafData.fcsts : [];
+
+                const forecast = TafProcessor.generateHourlyForecast(
+                    fcsts,
+                    validFromTime,
+                    validToTime
+                );
+
+                const rawCandidates = [
+                    tafData.rawTAF,
+                    tafData.raw_text,
+                    tafData.rawText,
+                    tafData.raw,
+                ];
+                let rawTafFromJson = rawCandidates.find(x => x !== null && x !== undefined && String(x).trim() !== '');
+
+                UI.displayTafData({
+                    airport,
+                    airportName,
+                    validFrom: Utils.formatDateTime(validFromTime),
+                    validTo: Utils.formatDateTime(validToTime),
+                    forecast,
+                    rawTaf: rawTafFromJson || 'NO RAW DATA AVAILABLE'
+                });
+
+                if (App.currentAirport) {
+                    const a = App.currentAirport;
+                    const magRaw = a.magdec || a.magvar || a.magVariation || a.mag || null;
+                    let magVar = null;
+                    if (magRaw !== undefined && magRaw !== null) {
+                        const m = String(magRaw).trim().toUpperCase().match(/([+-]?\d+(?:\.\d+)?)(\s*([EW]))?/);
+                        if (m) {
+                            const num = Number(m[1]);
+                            const dir = m[3] || null;
+                            magVar = dir === 'W' ? -num : num;
+                        }
+                    }
+                    App.currentAirport._magVar = (magVar !== null && !isNaN(magVar)) ? magVar : 0;
+
+                    document.getElementById('airportIcao').textContent = a.icaoId || icao;
+                    document.getElementById('airportFullName').textContent = (a.name || 'UNKNOWN').trim();
+                    document.getElementById('airportLocation').textContent = `${a.state || ''} ${a.country || ''}`.trim();
+                    let elevDisplay = '-';
+                    if (a.elev !== undefined && a.elev !== null) {
+                        const elevNum = Number(a.elev);
+                        if (!isNaN(elevNum)) {
+                            const elevFt = Math.round(elevNum * 3.28084);
+                            elevDisplay = `${elevFt} ft / ${elevNum} m`;
+                        }
+                    }
+                    document.getElementById('airportElev').textContent = elevDisplay;
+                    document.getElementById('airportCoords').textContent = (a.lat && a.lon) ? `${a.lat.toFixed(4)}, ${a.lon.toFixed(4)}` : '-';
+                    document.getElementById('airportFreqs').textContent = a.freqs || '-';
+                    document.getElementById('airportMagVar').textContent = (App.currentAirport._magVar || App.currentAirport._magVar === 0) ? `${App.currentAirport._magVar}°` : '-';
+                    document.getElementById('airportRunways').textContent = (a.runways && a.runways.length) ? a.runways.map(r => r.id).join(', ') : '-';
+                    Utils.showElement('airportPanel');
+                } else {
+                    document.getElementById('airportIcao').textContent = icao;
+                    document.getElementById('airportFullName').textContent = 'No airport metadata available.';
+                    document.getElementById('airportLocation').textContent = '-';
+                    document.getElementById('airportElev').textContent = '-';
+                    document.getElementById('airportCoords').textContent = '-';
+                    document.getElementById('airportFreqs').textContent = '-';
+                    document.getElementById('airportRunways').textContent = '-';
+                    Utils.showElement('airportPanel');
+                }
+            },
+
+            async fetchAndDisplayMetar(icao) {
+                // Fetch airport data for density altitude calculation if not already loaded
+                if (!App.currentAirport || App.currentAirport.icaoId !== icao) {
+                    const airportMeta = await Api.fetchAirport(icao);
+                    App.currentAirport = airportMeta;
+                }
+
+                const metarData = await Api.fetchMetarData(icao);
+                UI.displayMetarData(metarData);
+            },
+
+            async fetchAndDisplayPirep(icao) {
+                const pirepData = await Api.fetchPirepData(icao);
+                UI.displayPirepData(pirepData);
+            }
+        };
+
+        // ===== INITIALIZATION =====
+        document.addEventListener('DOMContentLoaded', () => {
+            App.init();
+        });
+    </script>
+</body>
+</html>

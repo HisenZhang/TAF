@@ -878,7 +878,13 @@
                         <div class="airport-name">SIGNIFICANT METEOROLOGICAL INFORMATION</div>
                     </div>
                 </div>
-                <div id="sigmetContent" class="sigmet-content"></div>
+            </div>
+
+            <div id="sigmetPanel" class="panel hidden">
+                <div class="panel-header">ACTIVE SIGMETS</div>
+                <div class="panel-content">
+                    <div id="sigmetContent" class="sigmet-content"></div>
+                </div>
             </div>
         </div>
 
@@ -891,7 +897,13 @@
                         <div class="airport-name">GRAPHICAL AIRMETS</div>
                     </div>
                 </div>
-                <div id="gairmetContent" class="gairmet-content"></div>
+            </div>
+
+            <div id="gairmetPanel" class="panel hidden">
+                <div class="panel-header">ACTIVE G-AIRMETS</div>
+                <div class="panel-content">
+                    <div id="gairmetContent" class="gairmet-content"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -2092,9 +2104,15 @@
                 const content = document.getElementById('sigmetContent');
                 content.innerHTML = '';
 
+                // Update tab text with count
+                const sigmetTab = document.querySelector('[data-tab="sigmet"]');
+                const count = sigmets && sigmets.length > 0 ? sigmets.length : 0;
+                sigmetTab.textContent = count > 0 ? `SIGMET (${count})` : 'SIGMET';
+
                 if (!sigmets || sigmets.length === 0) {
                     content.innerHTML = '<div style="color: #888; padding: 20px; text-align: center;">No active SIGMETs</div>';
                     Utils.showElement('sigmetDisplay');
+                    Utils.showElement('sigmetPanel');
                     return;
                 }
 
@@ -2151,15 +2169,22 @@
                 });
 
                 Utils.showElement('sigmetDisplay');
+                Utils.showElement('sigmetPanel');
             },
 
             displayGairmetData(gairmets) {
                 const content = document.getElementById('gairmetContent');
                 content.innerHTML = '';
 
+                // Update tab text with count
+                const gairmetTab = document.querySelector('[data-tab="gairmet"]');
+                const count = gairmets && gairmets.length > 0 ? gairmets.length : 0;
+                gairmetTab.textContent = count > 0 ? `G-AIRMET (${count})` : 'G-AIRMET';
+
                 if (!gairmets || gairmets.length === 0) {
                     content.innerHTML = '<div style="color: #888; padding: 20px; text-align: center;">No active G-AIRMETs</div>';
                     Utils.showElement('gairmetDisplay');
+                    Utils.showElement('gairmetPanel');
                     return;
                 }
 
@@ -2223,6 +2248,7 @@
                 });
 
                 Utils.showElement('gairmetDisplay');
+                Utils.showElement('gairmetPanel');
             }
         };
 

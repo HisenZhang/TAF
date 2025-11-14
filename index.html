@@ -581,7 +581,7 @@
         .airport-summary { display: flex; flex-direction: column; gap: 6px; }
         .airport-kv { display: block; gap: 8px; align-items: baseline; }
         .airport-key { color: #AAAAAA; min-width: 90px; font-size: 11px; }
-        .airport-val { color: #00FFFF;font-size: 11px; font-weight: 700; }
+        .airport-val { color: #00FF00; font-size: 11px; font-weight: 700; }
 
         .runway-results { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
         .runway-block { background: #070707; display: flex; flex-direction: column; gap: 6px; }
@@ -717,6 +717,7 @@
             <button class="tab-btn active" data-tab="taf">TAF</button>
             <button class="tab-btn" data-tab="metar">METAR</button>
             <button class="tab-btn" data-tab="pirep">PIREP</button>
+            <button class="tab-btn" data-tab="airport">AIRPORT</button>
         </div>
 
         <!-- Error Panel -->
@@ -835,6 +836,34 @@
                     </div>
                 </div>
                 <div class="pirep-content" id="pirepContent"></div>
+            </div>
+        </div>
+
+        <!-- AIRPORT View -->
+        <div id="airportView" class="view-content hidden">
+            <div id="airportDisplay" class="airport-display hidden">
+                <div class="display-header">
+                    <div>
+                        <div id="airportViewId" class="airport-id"></div>
+                        <div id="airportViewName" class="airport-name"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="airportInfoPanel" class="airport-panel panel hidden">
+                <div class="airport-header panel-header">AIRPORT INFORMATION</div>
+                <div class="airport-content panel-content">
+                    <div class="airport-summary">
+                        <div class="airport-kv"><div class="airport-key">ICAO</div><div id="airportIcaoView" class="airport-val">-</div></div>
+                        <div class="airport-kv"><div class="airport-key">Name</div><div id="airportFullNameView" class="airport-val">-</div></div>
+                        <div class="airport-kv"><div class="airport-key">Location</div><div id="airportLocationView" class="airport-val">-</div></div>
+                        <div class="airport-kv"><div class="airport-key">Elev</div><div id="airportElevView" class="airport-val">-</div></div>
+                        <div class="airport-kv"><div class="airport-key">Coords</div><div id="airportCoordsView" class="airport-val">-</div></div>
+                        <div class="airport-kv"><div class="airport-key">Freqs</div><div id="airportFreqsView" class="airport-val">-</div></div>
+                        <div class="airport-kv"><div class="airport-key">MagVar</div><div id="airportMagVarView" class="airport-val">-</div></div>
+                        <div class="airport-kv"><div class="airport-key">Runways</div><div id="airportRunwaysView" class="airport-val">-</div></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1225,7 +1254,8 @@
             async fetchPirepData(icao) {
                 try {
                     // PIREP requires id + distance for center point search
-                    const apiUrl = `https://aviationweather.gov/api/data/pirep?id=${icao}&distance=50&format=json`;
+                    // Distance in statute miles (100nm ≈ 115 statute miles), age in hours
+                    const apiUrl = `https://aviationweather.gov/api/data/pirep?id=${icao}&distance=115&age=6&format=json`;
                     const response = await fetch(`https://cors.hisenz.com/?url=${encodeURIComponent(apiUrl)}`);
 
                     if (!response.ok) {
@@ -1547,12 +1577,49 @@
                 // Calculate spread
                 const spread = (tempC !== null && dewpC !== null) ? (tempC - dewpC).toFixed(1) : null;
 
+                // Get ceiling from cloud layers (ONLY BKN or OVC define ceiling)
+                let ceiling = 'CLR';
+                let cloudCover = 'SKC';
+                if (data.clouds && Array.isArray(data.clouds) && data.clouds.length > 0) {
+                    // Only BKN or OVC define ceiling
+                    for (const cloud of data.clouds) {
+                        if (cloud && cloud.cover && (cloud.cover === 'BKN' || cloud.cover === 'OVC') && cloud.base !== null && cloud.base !== undefined) {
+                            ceiling = cloud.base.toString();
+                            cloudCover = cloud.cover;
+                            break;
+                        }
+                    }
+                    // If no BKN/OVC ceiling, check for SKC/CLR vs other layers
+                    if (ceiling === 'CLR') {
+                        const firstCloud = data.clouds[0];
+                        if (firstCloud) {
+                            if (firstCloud.cover === 'SKC' || firstCloud.cover === 'CLR') {
+                                cloudCover = 'SKC';
+                                ceiling = 'CLR';
+                            } else {
+                                // FEW or SCT - note them but ceiling remains CLR
+                                cloudCover = firstCloud.cover;
+                                ceiling = 'CLR';  // No ceiling for FEW/SCT
+                            }
+                        }
+                    }
+                }
+
+                // Calculate flight category using same logic as TAF
+                const visibility = data.visib !== undefined ? data.visib.toString() : 'UNK';
+                const fltCat = WeatherParser.determineFlightCategory(visibility, ceiling, cloudCover);
+
+                // Parse altimeter from raw METAR (Axxxx format, e.g., A2998 = 29.98 inHg)
+                let altimInHg = 29.92; // Standard pressure
+                const rawMetarText = data.rawOb || '';
+                const altimMatch = rawMetarText.match(/A(\d{4})/);
+                if (altimMatch) {
+                    altimInHg = parseInt(altimMatch[1]) / 100;
+                }
+
                 // Calculate density altitude approximation
-                const altimInHg = data.altim || 29.92;
-                // Field elevation needs to come from airport data, not METAR data
-                // For now, we'll skip density altitude if we don't have reliable elevation
                 let densityAlt = null;
-                if (App.currentAirport && App.currentAirport.elev && tempC !== null) {
+                if (App.currentAirport && App.currentAirport.elev !== undefined && tempC !== null) {
                     const fieldElevFt = Math.round(App.currentAirport.elev * 3.28084); // Convert meters to feet
                     const pressureAlt = fieldElevFt + (29.92 - altimInHg) * 1000;
                     const isaTemp = 15 - (0.00198 * pressureAlt); // ISA temperature at pressure altitude
@@ -1579,14 +1646,28 @@
                     return colors[cat] || '#808080';
                 };
 
-                const fltCat = data.fltcat || 'UNK';
                 const fltCatColor = getFltCatColor(fltCat);
+
+                // Update METAR tab text with flight category badge
+                const metarTab = document.querySelector('[data-tab="metar"]');
+                metarTab.innerHTML = `METAR <span style="background-color: ${fltCatColor}; color: #000; padding: 2px 6px; border-radius: 3px; font-weight: bold; font-size: 0.85em;">${fltCat}</span>`;
 
                 const fields = [
                     {
-                        label: 'Flight Category',
-                        value: fltCat,
-                        color: fltCatColor
+                        label: 'Wind',
+                        value: windText
+                    },
+                    {
+                        label: 'Visibility',
+                        value: data.visib !== undefined ? (data.visib >= 10 ? '10+ SM' : `${data.visib} SM`) : '-'
+                    },
+                    {
+                        label: 'Present Weather',
+                        value: data.wxString ? this.decodeWxString(data.wxString) : 'None reported'
+                    },
+                    {
+                        label: 'Sky Condition',
+                        value: this.formatClouds(data.clouds)
                     },
                     {
                         label: 'Temperature',
@@ -1601,28 +1682,17 @@
                         value: spread !== null ? `${spread}°C` : '-'
                     },
                     {
-                        label: 'Wind',
-                        value: windText
-                    },
-                    {
-                        label: 'Visibility',
-                        value: data.visib !== undefined ? (data.visib >= 10 ? '10+ SM' : `${data.visib} SM`) : '-'
-                    },
-                    {
                         label: 'Altimeter',
-                        value: data.altim !== undefined ? `${data.altim.toFixed(2)} inHg (${Math.round(data.altim * 33.8639)} mb)` : '-'
+                        value: `${altimInHg.toFixed(2)} inHg (${Math.round(altimInHg * 33.8639)} mb)`
+                    },
+                    {
+                        label: 'Flight Category',
+                        value: fltCat,
+                        color: fltCatColor
                     },
                     {
                         label: 'Density Altitude',
                         value: densityAlt !== null ? `${densityAlt} ft` : '-'
-                    },
-                    {
-                        label: 'Sky Condition',
-                        value: this.formatClouds(data.clouds)
-                    },
-                    {
-                        label: 'Present Weather',
-                        value: data.wxString ? this.decodeWxString(data.wxString) : 'None reported'
                     }
                 ];
 
@@ -1740,42 +1810,138 @@
                 const content = document.getElementById('pirepContent');
                 content.innerHTML = '';
 
+                // Update PIREP tab text with count
+                const pirepTab = document.querySelector('[data-tab="pirep"]');
+                const count = pireps && pireps.length > 0 ? pireps.length : 0;
+                pirepTab.textContent = count > 0 ? `PIREP (${count})` : 'PIREP';
+
                 if (!pireps || pireps.length === 0) {
                     content.innerHTML = '<div class="data-value">No pilot reports available</div>';
                 } else {
-                    pireps.forEach(pirep => {
+                    // Sort PIREPs: most recent first, then by distance (nearest first)
+                    const sortedPireps = [...pireps].sort((a, b) => {
+                        // First priority: most recent observation time
+                        const timeA = a.obsTime || 0;
+                        const timeB = b.obsTime || 0;
+                        if (timeB !== timeA) {
+                            return timeB - timeA; // Descending (newest first)
+                        }
+                        // Second priority: nearest first (if distance data available)
+                        const distA = a.distance || 0;
+                        const distB = b.distance || 0;
+                        return distA - distB; // Ascending (nearest first)
+                    });
+
+                    sortedPireps.forEach(pirep => {
                         const item = document.createElement('div');
                         item.className = 'pirep-item';
 
-                        const fields = [
-                            { label: 'Time', value: pirep.obsTime ? Utils.formatDateTime(new Date(pirep.obsTime * 1000)) : '-' },
-                            { label: 'Aircraft', value: pirep.acType || '-' },
-                            { label: 'Altitude', value: pirep.fltlvl !== undefined ? `${pirep.fltlvl} ft` : '-' },
-                            { label: 'Report', value: pirep.rawOb || pirep.pirep || '-' }
-                        ];
+                        // Calculate relative time
+                        const getRelativeTime = (obsTime) => {
+                            if (!obsTime) return '';
+                            const now = Date.now() / 1000;
+                            const diffMinutes = Math.round((now - obsTime) / 60);
+                            if (diffMinutes < 60) return `${diffMinutes}m ago`;
+                            const diffHours = Math.round(diffMinutes / 60);
+                            return `${diffHours}h ago`;
+                        };
 
-                        fields.forEach(field => {
-                            const row = document.createElement('div');
-                            row.className = 'data-row';
+                        const obsDate = pirep.obsTime ? new Date(pirep.obsTime * 1000) : null;
+                        const timeStr = obsDate ? Utils.formatDateTime(obsDate) : '-';
+                        const relTime = getRelativeTime(pirep.obsTime);
 
-                            const label = document.createElement('div');
-                            label.className = 'data-label';
-                            label.textContent = field.label;
+                        // Compact header: Time + relative time + Aircraft + Altitude
+                        const header = document.createElement('div');
+                        header.style.cssText = 'display: flex; gap: 12px; align-items: center; margin-bottom: 8px; flex-wrap: wrap;';
 
-                            const value = document.createElement('div');
-                            value.className = 'data-value';
-                            value.textContent = field.value;
+                        const timeSpan = document.createElement('span');
+                        timeSpan.textContent = timeStr;
+                        timeSpan.style.cssText = 'color: #e0e0e0;';
 
-                            row.appendChild(label);
-                            row.appendChild(value);
-                            item.appendChild(row);
-                        });
+                        const relTimeSpan = document.createElement('span');
+                        relTimeSpan.textContent = relTime;
+                        relTimeSpan.style.cssText = 'color: #ff00ff; font-weight: bold;';
 
+                        const acSpan = document.createElement('span');
+                        acSpan.textContent = pirep.acType || 'Unknown A/C';
+                        acSpan.style.cssText = 'color: #aaa;';
+
+                        const altSpan = document.createElement('span');
+                        altSpan.textContent = pirep.fltlvl !== undefined ? `${pirep.fltlvl} ft` : '-';
+                        altSpan.style.cssText = 'color: #aaa;';
+
+                        header.appendChild(timeSpan);
+                        if (relTime) header.appendChild(relTimeSpan);
+                        header.appendChild(acSpan);
+                        header.appendChild(altSpan);
+
+                        // Report text
+                        const reportDiv = document.createElement('div');
+                        reportDiv.style.cssText = 'color: #00ff00; line-height: 1.5; padding-left: 0;';
+                        reportDiv.textContent = pirep.rawOb || pirep.pirep || '-';
+
+                        item.appendChild(header);
+                        item.appendChild(reportDiv);
                         content.appendChild(item);
                     });
                 }
 
                 Utils.showElement('pirepDisplay');
+                Utils.hideElement('errorPanel');
+            },
+
+            displayAirportData(airportMeta, icao) {
+                const a = airportMeta;
+
+                document.getElementById('airportViewId').textContent = icao;
+                document.getElementById('airportViewName').textContent = a ? (a.name || 'UNKNOWN AIRPORT') : 'UNKNOWN AIRPORT';
+
+                if (a) {
+                    // Parse magnetic variation
+                    let magVar = null;
+                    if (a.magVar !== undefined && a.magVar !== null) {
+                        if (typeof a.magVar === 'number') {
+                            magVar = a.magVar;
+                        } else if (typeof a.magVar === 'string') {
+                            const m = a.magVar.match(/(\d+)(\.\d+)?\s*([EW])?/i);
+                            if (m) {
+                                const num = Number(m[1]);
+                                const dir = m[3] || null;
+                                magVar = dir === 'W' ? -num : num;
+                            }
+                        }
+                    }
+                    App.currentAirport._magVar = (magVar !== null && !isNaN(magVar)) ? magVar : 0;
+
+                    document.getElementById('airportIcaoView').textContent = a.icaoId || icao;
+                    document.getElementById('airportFullNameView').textContent = (a.name || 'UNKNOWN').trim();
+                    document.getElementById('airportLocationView').textContent = `${a.state || ''} ${a.country || ''}`.trim();
+                    let elevDisplay = '-';
+                    if (a.elev !== undefined && a.elev !== null) {
+                        const elevNum = Number(a.elev);
+                        if (!isNaN(elevNum)) {
+                            const elevFt = Math.round(elevNum * 3.28084);
+                            elevDisplay = `${elevFt} ft / ${elevNum} m`;
+                        }
+                    }
+                    document.getElementById('airportElevView').textContent = elevDisplay;
+                    document.getElementById('airportCoordsView').textContent = (a.lat && a.lon) ? `${a.lat.toFixed(4)}, ${a.lon.toFixed(4)}` : '-';
+                    document.getElementById('airportFreqsView').textContent = a.freqs || '-';
+                    document.getElementById('airportMagVarView').textContent = (App.currentAirport._magVar || App.currentAirport._magVar === 0) ? `${App.currentAirport._magVar}°` : '-';
+                    document.getElementById('airportRunwaysView').textContent = (a.runways && a.runways.length) ? a.runways.map(r => r.id).join(', ') : '-';
+                } else {
+                    document.getElementById('airportIcaoView').textContent = icao;
+                    document.getElementById('airportFullNameView').textContent = 'No airport metadata available.';
+                    document.getElementById('airportLocationView').textContent = '-';
+                    document.getElementById('airportElevView').textContent = '-';
+                    document.getElementById('airportCoordsView').textContent = '-';
+                    document.getElementById('airportFreqsView').textContent = '-';
+                    document.getElementById('airportMagVarView').textContent = '-';
+                    document.getElementById('airportRunwaysView').textContent = '-';
+                }
+
+                Utils.showElement('airportDisplay');
+                Utils.showElement('airportInfoPanel');
                 Utils.hideElement('errorPanel');
             }
         };
@@ -1790,8 +1956,181 @@
                 this.parseUrlParams();
 
                 if (currentIcao.length === 4) {
-                    this.fetchAndDisplayData(currentIcao, currentTab);
+                    this.fetchAllDataParallel(currentIcao);
                 }
+            },
+
+            async fetchAllDataParallel(icao) {
+                UI.showLoading('ACQUIRING ALL DATA');
+
+                try {
+                    // Fetch all data in parallel
+                    const [tafResult, metarResult, pirepResult, airportResult] = await Promise.allSettled([
+                        Api.fetchTafData(icao),
+                        Api.fetchMetarData(icao),
+                        Api.fetchPirepData(icao),
+                        Api.fetchAirport(icao)
+                    ]);
+
+                    // Store airport metadata first
+                    if (airportResult.status === 'fulfilled') {
+                        App.currentAirport = airportResult.value;
+                    }
+
+                    // Process TAF - call fetchAndDisplayTaf to handle processing
+                    if (tafResult.status === 'fulfilled') {
+                        await this.processTafData(tafResult.value.json, icao);
+                    }
+
+                    // Process METAR
+                    if (metarResult.status === 'fulfilled') {
+                        UI.displayMetarData(metarResult.value);
+                    }
+
+                    // Process PIREP
+                    if (pirepResult.status === 'fulfilled') {
+                        UI.displayPirepData(pirepResult.value);
+                    }
+
+                    // Process Airport
+                    if (airportResult.status === 'fulfilled') {
+                        UI.displayAirportData(airportResult.value, icao);
+                    }
+
+                    // Show the current tab view
+                    this.switchTab(currentTab);
+
+                    UI.updateStatus();
+                } catch (err) {
+                    console.error('Failed to fetch data:', err);
+                    UI.showError(`FAILED TO LOAD DATA FOR ${icao}\nERROR: ${err.message}`);
+                } finally {
+                    UI.hideLoading();
+                }
+            },
+
+            async processTafData(tafData, icao) {
+                const airport = tafData.icaoId || icao || 'UNK';
+                const airportName = tafData.name || 'UNKNOWN AIRPORT';
+                const validFromTime = tafData.validTimeFrom ? new Date(tafData.validTimeFrom * 1000) : new Date();
+                const validToTime = tafData.validTimeTo ? new Date(tafData.validTimeTo * 1000) : new Date();
+
+                const fcsts = tafData.fcsts && Array.isArray(tafData.fcsts) ? tafData.fcsts : [];
+
+                const forecast = TafProcessor.generateHourlyForecast(
+                    fcsts,
+                    validFromTime,
+                    validToTime
+                );
+
+                const rawCandidates = [
+                    tafData.rawTAF,
+                    tafData.rawTaf,
+                    tafData.raw_text,
+                    tafData.rawText,
+                    tafData.raw,
+                ];
+                let rawTafFromJson = rawCandidates.find(x => x !== null && x !== undefined && String(x).trim() !== '');
+
+                UI.displayTafData({
+                    airport,
+                    airportName,
+                    validFrom: Utils.formatDateTime(validFromTime),
+                    validTo: Utils.formatDateTime(validToTime),
+                    forecast,
+                    rawTaf: rawTafFromJson || 'NO RAW DATA AVAILABLE'
+                });
+
+                if (App.currentAirport) {
+                    const a = App.currentAirport;
+                    const magRaw = a.magdec || a.magvar || a.magVariation || a.mag || null;
+                    let magVar = null;
+                    if (magRaw !== undefined && magRaw !== null) {
+                        const m = String(magRaw).trim().toUpperCase().match(/([+-]?\d+(?:\.\d+)?)(\s*([EW]))?/);
+                        if (m) {
+                            const num = Number(m[1]);
+                            const dir = m[3] || null;
+                            magVar = dir === 'W' ? -num : num;
+                        }
+                    }
+                    App.currentAirport._magVar = (magVar !== null && !isNaN(magVar)) ? magVar : 0;
+
+                    if (a.runways && a.runways.length > 0 && forecast.length > 0) {
+                        const resultsEl = document.getElementById('runwayResults');
+                        resultsEl.innerHTML = '';
+
+                        const runways = a.runways;
+                        const magVar = App.currentAirport._magVar || 0;
+
+                        forecast.forEach(f => {
+                            if (f.windDir === '-' || f.windDir === 'VRB') return;
+                            const windDir = Number(f.windDir);
+                            const windSpd = Number(f.windSpd);
+                            if (isNaN(windDir) || isNaN(windSpd)) return;
+
+                            const block = document.createElement('div');
+                            block.className = 'wind-block';
+
+                            const timeDiv = document.createElement('div');
+                            timeDiv.className = 'wind-time';
+                            timeDiv.textContent = f.timeNarrow + 'Z';
+                            block.appendChild(timeDiv);
+
+                            const windDiv = document.createElement('div');
+                            windDiv.className = 'wind-info';
+                            const gust = f.windGst ? `G${f.windGst}` : '';
+                            windDiv.textContent = `Wind: ${f.windDir}° at ${f.windSpd}${gust ? ' ' + gust : ''} kt`;
+                            block.appendChild(windDiv);
+
+                            runways.forEach(rwy => {
+                                const rwyHeading = (Number(rwy.id) * 10 + magVar + 360) % 360;
+                                const relAngle = ((windDir - rwyHeading + 540) % 360) - 180;
+                                const headTail = Math.cos(relAngle * Math.PI / 180) * windSpd;
+                                const cross = Math.sin(relAngle * Math.PI / 180) * windSpd;
+
+                                const row = document.createElement('div');
+                                row.className = 'runway-wind-row';
+
+                                const name = document.createElement('div');
+                                name.className = 'runway-end-name';
+                                name.textContent = `RWY ${rwy.id}`;
+
+                                const stats = document.createElement('div');
+                                stats.className = 'runway-end-stats';
+
+                                const htSpan = document.createElement('span');
+                                htSpan.className = 'runway-end-headtail';
+                                htSpan.textContent = `${Math.abs(Math.round(headTail))} kt ${headTail >= 0 ? 'headwind' : 'tailwind'}`;
+
+                                const sep = document.createElement('span');
+                                sep.textContent = ' | ';
+                                sep.style.color = '#666';
+
+                                const crossSpan = document.createElement('span');
+                                crossSpan.className = 'runway-end-cross';
+                                crossSpan.textContent = `${Math.abs(Math.round(cross))} kt ${cross >= 0 ? 'from left' : 'from right'}`;
+
+                                stats.appendChild(htSpan);
+                                stats.appendChild(sep);
+                                stats.appendChild(crossSpan);
+
+                                row.appendChild(name);
+                                row.appendChild(stats);
+                                block.appendChild(row);
+                            });
+
+                            resultsEl.appendChild(block);
+                        });
+
+                        Utils.showElement('windPanel');
+                        try { document.getElementById('windPanel').scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch(e) {}
+                    }
+                }
+
+                Utils.hideElement('airportPanel');
+                Utils.showElement('primaryDisplay');
+                Utils.showElement('rawDataPanel');
+                Utils.hideElement('errorPanel');
             },
 
             setupEventListeners() {
@@ -1817,7 +2156,7 @@
                     document.getElementById('icaoInput').value = currentIcao;
                 }
 
-                if (tabFromUrl && ['taf', 'metar', 'pirep'].includes(tabFromUrl)) {
+                if (tabFromUrl && ['taf', 'metar', 'pirep', 'airport'].includes(tabFromUrl)) {
                     currentTab = tabFromUrl;
                     this.updateActiveTab();
                 }
@@ -1830,13 +2169,13 @@
                 Utils.updateUrl();
 
                 if (value.length === 4) {
-                    this.fetchAndDisplayData(value, currentTab);
+                    this.fetchAllDataParallel(value);
                 }
             },
 
             handleRefresh() {
                 if (currentIcao && currentIcao.length === 4) {
-                    this.fetchAndDisplayData(currentIcao, currentTab);
+                    this.fetchAllDataParallel(currentIcao);
                 }
             },
 
@@ -1849,14 +2188,10 @@
                 document.getElementById('tafView').classList.add('hidden');
                 document.getElementById('metarView').classList.add('hidden');
                 document.getElementById('pirepView').classList.add('hidden');
+                document.getElementById('airportView').classList.add('hidden');
 
                 // Show selected view
                 document.getElementById(`${tab}View`).classList.remove('hidden');
-
-                // Fetch data for the new tab
-                if (currentIcao && currentIcao.length === 4) {
-                    this.fetchAndDisplayData(currentIcao, tab);
-                }
             },
 
             updateActiveTab() {
@@ -1873,7 +2208,8 @@
                 const loadingMessages = {
                     taf: 'ACQUIRING TAF DATA',
                     metar: 'ACQUIRING METAR DATA',
-                    pirep: 'ACQUIRING PIREP DATA'
+                    pirep: 'ACQUIRING PIREP DATA',
+                    airport: 'ACQUIRING AIRPORT DATA'
                 };
 
                 UI.showLoading(loadingMessages[tab] || 'ACQUIRING DATA');
@@ -1885,6 +2221,8 @@
                         await this.fetchAndDisplayMetar(icao);
                     } else if (tab === 'pirep') {
                         await this.fetchAndDisplayPirep(icao);
+                    } else if (tab === 'airport') {
+                        await this.fetchAndDisplayAirport(icao);
                     }
 
                     UI.updateStatus();
@@ -1988,6 +2326,12 @@
             async fetchAndDisplayPirep(icao) {
                 const pirepData = await Api.fetchPirepData(icao);
                 UI.displayPirepData(pirepData);
+            },
+
+            async fetchAndDisplayAirport(icao) {
+                const airportMeta = await Api.fetchAirport(icao);
+                App.currentAirport = airportMeta;
+                UI.displayAirportData(airportMeta, icao);
             }
         };
 

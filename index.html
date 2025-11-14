@@ -2053,16 +2053,19 @@
                 document.getElementById('airportViewName').textContent = a ? (a.name || 'UNKNOWN AIRPORT') : 'UNKNOWN AIRPORT';
 
                 if (a) {
-                    // Parse magnetic variation
+                    // Parse magnetic variation (field is 'magdec', format like "02E" or "05W")
+                    const magRaw = a.magdec || a.mag_dec || a.magvar || a.magVariation || null;
                     let magVar = null;
-                    if (a.magVar !== undefined && a.magVar !== null) {
-                        if (typeof a.magVar === 'number') {
-                            magVar = a.magVar;
-                        } else if (typeof a.magVar === 'string') {
-                            const m = a.magVar.match(/(\d+)(\.\d+)?\s*([EW])?/i);
+                    if (magRaw !== undefined && magRaw !== null) {
+                        if (typeof magRaw === 'number') {
+                            magVar = magRaw;
+                        } else if (typeof magRaw === 'string') {
+                            // Match formats like "02E", "05W", "12.5E", etc.
+                            const m = String(magRaw).trim().toUpperCase().match(/([+-]?\d+(?:\.\d+)?)\s*([EW])?/);
                             if (m) {
-                                const num = Number(m[1]);
-                                const dir = m[3] || null;
+                                const num = parseFloat(m[1]);
+                                const dir = m[2] || null;
+                                // East is positive, West is negative
                                 magVar = dir === 'W' ? -num : num;
                             }
                         }
@@ -2083,7 +2086,14 @@
                     document.getElementById('airportElevView').textContent = elevDisplay;
                     document.getElementById('airportCoordsView').textContent = (a.lat && a.lon) ? `${a.lat.toFixed(4)}, ${a.lon.toFixed(4)}` : '-';
                     document.getElementById('airportFreqsView').textContent = a.freqs || '-';
-                    document.getElementById('airportMagVarView').textContent = (App.currentAirport._magVar || App.currentAirport._magVar === 0) ? `${App.currentAirport._magVar}°` : '-';
+                    // Display magnetic variation with direction (E/W)
+                    let magVarDisplay = '-';
+                    if (App.currentAirport._magVar !== null && !isNaN(App.currentAirport._magVar)) {
+                        const absVal = Math.abs(App.currentAirport._magVar);
+                        const dir = App.currentAirport._magVar >= 0 ? 'E' : 'W';
+                        magVarDisplay = `${absVal}° ${dir}`;
+                    }
+                    document.getElementById('airportMagVarView').textContent = magVarDisplay;
                     document.getElementById('airportRunwaysView').textContent = (a.runways && a.runways.length) ? a.runways.map(r => r.id).join(', ') : '-';
                 } else {
                     document.getElementById('airportIcaoView').textContent = icao;

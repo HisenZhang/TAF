@@ -1868,9 +1868,9 @@
 
                         const altSpan = document.createElement('span');
                         // fltlvl is in hundreds of feet (e.g., 100 = 10,000 ft = FL100)
-                        const altText = pirep.fltlvl !== undefined ? `${pirep.fltlvl * 100} ft` : '-';
+                        const altText = (pirep.fltlvl !== undefined && pirep.fltlvl !== null) ? `${pirep.fltlvl * 100} ft` : '-';
                         altSpan.textContent = altText;
-                        altSpan.style.cssText = 'color: #aaa;';
+                        altSpan.style.cssText = 'color: #00FFFF;';
 
                         header.appendChild(timeSpan);
                         if (relTime) header.appendChild(relTimeSpan);

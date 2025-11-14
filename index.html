@@ -1174,21 +1174,28 @@
                 let ceiling = 'UNK';
                 let cloudCover = 'UNK';
                 if (forecastData.clouds && Array.isArray(forecastData.clouds) && forecastData.clouds.length > 0) {
+                    // Look for BKN or OVC clouds (ceiling layers)
                     for (const cloud of forecastData.clouds) {
-                        if (cloud && cloud.cover && cloud.cover !== 'SKC' && cloud.base !== null && cloud.base !== undefined) {
-                            ceiling = cloud.base.toString();
-                            cloudCover = cloud.cover;
-                            break;
+                        if (cloud && cloud.cover && (cloud.cover === 'BKN' || cloud.cover === 'OVC')) {
+                            if (cloud.base !== null && cloud.base !== undefined) {
+                                ceiling = cloud.base.toString();
+                                cloudCover = cloud.cover;
+                                break;
+                            }
                         }
                     }
+                    // If no ceiling found, check for clear/SKC
                     if (ceiling === 'UNK') {
-                        const clearClouds = forecastData.clouds.find(cloud => cloud && cloud.cover === 'SKC');
+                        const clearClouds = forecastData.clouds.find(cloud =>
+                            cloud && (cloud.cover === 'SKC' || cloud.cover === 'CLR' || cloud.cover === 'FEW' || cloud.cover === 'SCT')
+                        );
                         if (clearClouds) {
                             ceiling = 'CLR';
-                            cloudCover = 'SKC';
+                            cloudCover = clearClouds.cover;
                         }
                     }
                 } else {
+                    // No cloud data means unknown
                     ceiling = 'UNK';
                     cloudCover = 'UNK';
                 }

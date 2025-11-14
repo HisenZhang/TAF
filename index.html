@@ -1425,12 +1425,11 @@
             hideAllViews() {
                 // Hide view containers, not individual display elements
                 // Individual display elements are controlled by their display functions
-                document.getElementById('tafView').classList.add('hidden');
-                document.getElementById('metarView').classList.add('hidden');
-                document.getElementById('pirepView').classList.add('hidden');
-                document.getElementById('sigmetView').classList.add('hidden');
-                document.getElementById('gairmetView').classList.add('hidden');
-                document.getElementById('airportView').classList.add('hidden');
+                const views = ['tafView', 'metarView', 'pirepView', 'sigmetView', 'gairmetView', 'airportView'];
+                views.forEach(viewId => {
+                    const el = document.getElementById(viewId);
+                    if (el) el.classList.add('hidden');
+                });
             },
 
             updateStatus() {
@@ -2528,15 +2527,15 @@
                 Utils.hideElement('loadingPanel');
 
                 // Hide all view containers
-                document.getElementById('tafView').classList.add('hidden');
-                document.getElementById('metarView').classList.add('hidden');
-                document.getElementById('pirepView').classList.add('hidden');
-                document.getElementById('sigmetView').classList.add('hidden');
-                document.getElementById('gairmetView').classList.add('hidden');
-                document.getElementById('airportView').classList.add('hidden');
+                const views = ['tafView', 'metarView', 'pirepView', 'sigmetView', 'gairmetView', 'airportView'];
+                views.forEach(viewId => {
+                    const el = document.getElementById(viewId);
+                    if (el) el.classList.add('hidden');
+                });
 
                 // Show selected view
-                document.getElementById(`${tab}View`).classList.remove('hidden');
+                const selectedView = document.getElementById(`${tab}View`);
+                if (selectedView) selectedView.classList.remove('hidden');
             },
 
             updateActiveTab() {

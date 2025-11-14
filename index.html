@@ -2001,6 +2001,37 @@
                 Utils.showElement('airportDisplay');
                 Utils.showElement('airportInfoPanel');
                 Utils.hideElement('errorPanel');
+            },
+
+            showNoTafData(icao) {
+                document.getElementById('airportId').textContent = icao;
+                document.getElementById('airportName').textContent = 'NO TAF DATA AVAILABLE';
+                Utils.hideElement('forecastTable');
+                Utils.hideElement('windPanel');
+                Utils.hideElement('rawDataPanel');
+                Utils.showElement('primaryDisplay');
+            },
+
+            showNoMetarData(icao) {
+                document.getElementById('metarAirportId').textContent = icao;
+                document.getElementById('metarAirportName').textContent = 'NO METAR DATA AVAILABLE';
+                document.getElementById('metarObsTime').textContent = '-';
+                document.getElementById('metarContent').innerHTML = '<div style="color: #888; padding: 20px; text-align: center;">No current weather observation available for this airport</div>';
+                Utils.hideElement('metarRawPanel');
+                Utils.showElement('metarDisplay');
+            },
+
+            showNoPirepData(icao) {
+                document.getElementById('pirepAirportId').textContent = icao;
+                document.getElementById('pirepContent').innerHTML = '<div style="color: #888; padding: 20px; text-align: center;">No pilot reports available</div>';
+                Utils.showElement('pirepDisplay');
+            },
+
+            showNoAirportData(icao) {
+                document.getElementById('airportViewId').textContent = icao;
+                document.getElementById('airportViewName').textContent = 'NO AIRPORT DATA AVAILABLE';
+                Utils.hideElement('airportInfoPanel');
+                Utils.showElement('airportDisplay');
             }
         };
 
@@ -2047,21 +2078,29 @@
                     // Process TAF
                     if (tafResult.status === 'fulfilled') {
                         await this.processTafData(tafResult.value.json, icao);
+                    } else {
+                        UI.showNoTafData(icao);
                     }
 
                     // Process METAR
                     if (metarResult.status === 'fulfilled') {
                         UI.displayMetarData(metarResult.value);
+                    } else {
+                        UI.showNoMetarData(icao);
                     }
 
                     // Process PIREP
                     if (pirepResult.status === 'fulfilled') {
                         UI.displayPirepData(pirepResult.value);
+                    } else {
+                        UI.showNoPirepData(icao);
                     }
 
                     // Process Airport
                     if (airportResult.status === 'fulfilled') {
                         UI.displayAirportData(airportResult.value, icao);
+                    } else {
+                        UI.showNoAirportData(icao);
                     }
 
                     UI.updateStatus();

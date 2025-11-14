@@ -1867,22 +1867,78 @@
                         acSpan.style.cssText = 'color: #aaa;';
 
                         const altSpan = document.createElement('span');
-                        // fltlvl is in hundreds of feet (e.g., 100 = 10,000 ft = FL100)
-                        const altText = (pirep.fltlvl !== undefined && pirep.fltlvl !== null) ? `${pirep.fltlvl * 100} ft` : '-';
+                        // fltLvl is a string in hundreds of feet (e.g., "230" = 23,000 ft = FL230)
+                        let altText = '-';
+                        if (pirep.fltLvl !== undefined && pirep.fltLvl !== null && pirep.fltLvl !== '') {
+                            const fltLvlNum = parseInt(pirep.fltLvl);
+                            if (!isNaN(fltLvlNum)) {
+                                altText = `FL${fltLvlNum} (${fltLvlNum * 100} ft)`;
+                            }
+                        }
                         altSpan.textContent = altText;
-                        altSpan.style.cssText = 'color: #00FFFF;';
+                        altSpan.style.cssText = 'color: #00FFFF; font-weight: bold;';
 
                         header.appendChild(timeSpan);
                         if (relTime) header.appendChild(relTimeSpan);
                         header.appendChild(acSpan);
                         header.appendChild(altSpan);
 
+                        // Decode additional weather info
+                        const decodedInfo = [];
+
+                        // Temperature
+                        if (pirep.temp !== undefined && pirep.temp !== null && pirep.temp !== 0) {
+                            decodedInfo.push(`Temp: ${pirep.temp}°C`);
+                        }
+
+                        // Wind
+                        if (pirep.wdir !== undefined && pirep.wdir !== null && pirep.wdir !== 0 &&
+                            pirep.wspd !== undefined && pirep.wspd !== null && pirep.wspd !== 0) {
+                            decodedInfo.push(`Wind: ${pirep.wdir}° at ${pirep.wspd} kt`);
+                        }
+
+                        // Icing
+                        if (pirep.icgInt1 && pirep.icgInt1 !== 'NEG') {
+                            let icingStr = `Icing: ${pirep.icgInt1}`;
+                            if (pirep.icgType1) icingStr += ` ${pirep.icgType1}`;
+                            if (pirep.icgBas1 && pirep.icgTop1) {
+                                icingStr += ` ${pirep.icgBas1}-${pirep.icgTop1}`;
+                            }
+                            decodedInfo.push(icingStr);
+                        }
+
+                        // Turbulence
+                        if (pirep.tbInt1 && pirep.tbInt1 !== 'NEG') {
+                            let turbStr = `Turb: ${pirep.tbInt1}`;
+                            if (pirep.tbType1) turbStr += ` ${pirep.tbType1}`;
+                            if (pirep.tbFreq1) turbStr += ` ${pirep.tbFreq1}`;
+                            if (pirep.tbBas1 && pirep.tbTop1) {
+                                turbStr += ` ${pirep.tbBas1}-${pirep.tbTop1}`;
+                            }
+                            decodedInfo.push(turbStr);
+                        }
+
+                        // Sky conditions
+                        if (pirep.clouds && pirep.clouds.length > 0) {
+                            decodedInfo.push(`Sky: ${pirep.clouds.map(c => `${c.cover || ''} ${c.base || ''}`).join(', ')}`);
+                        }
+
+                        // Add decoded info if available
+                        if (decodedInfo.length > 0) {
+                            const infoDiv = document.createElement('div');
+                            infoDiv.style.cssText = 'color: #ffff00; font-size: 0.9em; margin-bottom: 4px;';
+                            infoDiv.textContent = decodedInfo.join(' | ');
+                            item.appendChild(header);
+                            item.appendChild(infoDiv);
+                        } else {
+                            item.appendChild(header);
+                        }
+
                         // Report text
                         const reportDiv = document.createElement('div');
                         reportDiv.style.cssText = 'color: #00ff00; line-height: 1.5; padding-left: 0;';
                         reportDiv.textContent = pirep.rawOb || pirep.pirep || '-';
 
-                        item.appendChild(header);
                         item.appendChild(reportDiv);
                         content.appendChild(item);
                     });

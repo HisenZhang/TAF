@@ -717,6 +717,8 @@
             <button class="tab-btn active" data-tab="taf">TAF</button>
             <button class="tab-btn" data-tab="metar">METAR</button>
             <button class="tab-btn" data-tab="pirep">PIREP</button>
+            <button class="tab-btn" data-tab="sigmet">SIGMET</button>
+            <button class="tab-btn" data-tab="gairmet">G-AIRMET</button>
             <button class="tab-btn" data-tab="airport">AIRPORT</button>
         </div>
 
@@ -864,6 +866,32 @@
                         <div class="airport-kv"><div class="airport-key">Runways</div><div id="airportRunwaysView" class="airport-val">-</div></div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- SIGMET View -->
+        <div id="sigmetView" class="view-content hidden">
+            <div id="sigmetDisplay" class="sigmet-display hidden">
+                <div class="display-header">
+                    <div>
+                        <div class="airport-id">US SIGMETS</div>
+                        <div class="airport-name">SIGNIFICANT METEOROLOGICAL INFORMATION</div>
+                    </div>
+                </div>
+                <div id="sigmetContent" class="sigmet-content"></div>
+            </div>
+        </div>
+
+        <!-- G-AIRMET View -->
+        <div id="gairmetView" class="view-content hidden">
+            <div id="gairmetDisplay" class="gairmet-display hidden">
+                <div class="display-header">
+                    <div>
+                        <div class="airport-id">US G-AIRMETS</div>
+                        <div class="airport-name">GRAPHICAL AIRMETS</div>
+                    </div>
+                </div>
+                <div id="gairmetContent" class="gairmet-content"></div>
             </div>
         </div>
     </div>
@@ -1302,6 +1330,36 @@
                     console.warn('Airport fetch failed:', e.message);
                     return null;
                 }
+            },
+
+            async fetchSigmet() {
+                try {
+                    const apiUrl = `https://aviationweather.gov/api/data/airsigmet?format=json`;
+                    const response = await fetch(`https://cors.hisenz.com/?url=${encodeURIComponent(apiUrl)}`);
+
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                    const jsonData = await response.json();
+                    return Array.isArray(jsonData) ? jsonData : [];
+                } catch (err) {
+                    console.error('SIGMET fetch error:', err);
+                    throw new Error(`Network error: ${err.message}`);
+                }
+            },
+
+            async fetchGairmet() {
+                try {
+                    const apiUrl = `https://aviationweather.gov/api/data/gairmet?format=json`;
+                    const response = await fetch(`https://cors.hisenz.com/?url=${encodeURIComponent(apiUrl)}`);
+
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                    const jsonData = await response.json();
+                    return Array.isArray(jsonData) ? jsonData : [];
+                } catch (err) {
+                    console.error('G-AIRMET fetch error:', err);
+                    throw new Error(`Network error: ${err.message}`);
+                }
             }
         };
 
@@ -1358,6 +1416,8 @@
                 document.getElementById('tafView').classList.add('hidden');
                 document.getElementById('metarView').classList.add('hidden');
                 document.getElementById('pirepView').classList.add('hidden');
+                document.getElementById('sigmetView').classList.add('hidden');
+                document.getElementById('gairmetView').classList.add('hidden');
                 document.getElementById('airportView').classList.add('hidden');
             },
 
@@ -2026,6 +2086,143 @@
                 document.getElementById('airportViewName').textContent = 'NO AIRPORT DATA AVAILABLE';
                 Utils.hideElement('airportInfoPanel');
                 Utils.showElement('airportDisplay');
+            },
+
+            displaySigmetData(sigmets) {
+                const content = document.getElementById('sigmetContent');
+                content.innerHTML = '';
+
+                if (!sigmets || sigmets.length === 0) {
+                    content.innerHTML = '<div style="color: #888; padding: 20px; text-align: center;">No active SIGMETs</div>';
+                    Utils.showElement('sigmetDisplay');
+                    return;
+                }
+
+                sigmets.forEach(sigmet => {
+                    const item = document.createElement('div');
+                    item.style.cssText = 'border: 1px solid #444; padding: 12px; margin-bottom: 12px; background: #1a1a1a;';
+
+                    // Header with hazard type and validity
+                    const header = document.createElement('div');
+                    header.style.cssText = 'display: flex; gap: 12px; align-items: center; margin-bottom: 8px; flex-wrap: wrap;';
+
+                    const hazardSpan = document.createElement('span');
+                    hazardSpan.textContent = sigmet.hazard || 'UNKNOWN';
+                    hazardSpan.style.cssText = 'color: #ff0000; font-weight: bold; font-size: 1.1em;';
+
+                    const seriesSpan = document.createElement('span');
+                    seriesSpan.textContent = `${sigmet.alphaChar || ''}${sigmet.seriesId || ''}`;
+                    seriesSpan.style.cssText = 'color: #00FFFF;';
+
+                    const validFromTime = sigmet.validTimeFrom ? new Date(sigmet.validTimeFrom * 1000) : null;
+                    const validToTime = sigmet.validTimeTo ? new Date(sigmet.validTimeTo * 1000) : null;
+                    const validStr = validFromTime && validToTime ?
+                        `Valid: ${Utils.formatDateTime(validFromTime)} - ${Utils.formatDateTime(validToTime)}` : '';
+                    const validSpan = document.createElement('span');
+                    validSpan.textContent = validStr;
+                    validSpan.style.cssText = 'color: #aaa; font-size: 0.9em;';
+
+                    header.appendChild(hazardSpan);
+                    header.appendChild(seriesSpan);
+                    if (validStr) header.appendChild(validSpan);
+
+                    // Altitude info
+                    if (sigmet.altitudeLo1 !== undefined || sigmet.altitudeHi1 !== undefined) {
+                        const altDiv = document.createElement('div');
+                        altDiv.style.cssText = 'color: #ffff00; margin-bottom: 4px; font-size: 0.9em;';
+                        const lo = sigmet.altitudeLo1 || 'SFC';
+                        const hi = sigmet.altitudeHi1 || 'UNL';
+                        altDiv.textContent = `Altitude: ${lo} - ${hi} ft`;
+                        item.appendChild(header);
+                        item.appendChild(altDiv);
+                    } else {
+                        item.appendChild(header);
+                    }
+
+                    // Raw text
+                    if (sigmet.rawAirSigmet) {
+                        const rawDiv = document.createElement('div');
+                        rawDiv.style.cssText = 'color: #00ff00; line-height: 1.5; white-space: pre-wrap; font-size: 0.85em; margin-top: 8px;';
+                        rawDiv.textContent = sigmet.rawAirSigmet;
+                        item.appendChild(rawDiv);
+                    }
+
+                    content.appendChild(item);
+                });
+
+                Utils.showElement('sigmetDisplay');
+            },
+
+            displayGairmetData(gairmets) {
+                const content = document.getElementById('gairmetContent');
+                content.innerHTML = '';
+
+                if (!gairmets || gairmets.length === 0) {
+                    content.innerHTML = '<div style="color: #888; padding: 20px; text-align: center;">No active G-AIRMETs</div>';
+                    Utils.showElement('gairmetDisplay');
+                    return;
+                }
+
+                // Group by product and hazard
+                const grouped = {};
+                gairmets.forEach(g => {
+                    const key = `${g.product || 'UNK'}_${g.hazard || 'UNK'}`;
+                    if (!grouped[key]) grouped[key] = [];
+                    grouped[key].push(g);
+                });
+
+                Object.keys(grouped).sort().forEach(key => {
+                    const items = grouped[key];
+                    const first = items[0];
+
+                    const group = document.createElement('div');
+                    group.style.cssText = 'border: 1px solid #444; padding: 12px; margin-bottom: 12px; background: #1a1a1a;';
+
+                    // Header
+                    const header = document.createElement('div');
+                    header.style.cssText = 'display: flex; gap: 12px; align-items: center; margin-bottom: 8px; flex-wrap: wrap;';
+
+                    const productSpan = document.createElement('span');
+                    productSpan.textContent = first.product || 'UNKNOWN';
+                    const productColors = { 'SIERRA': '#ff00ff', 'TANGO': '#ffff00', 'ZULU': '#00ffff' };
+                    productSpan.style.cssText = `color: ${productColors[first.product] || '#fff'}; font-weight: bold; font-size: 1.1em;`;
+
+                    const hazardSpan = document.createElement('span');
+                    hazardSpan.textContent = first.hazard || 'UNKNOWN';
+                    hazardSpan.style.cssText = 'color: #ff9900;';
+
+                    const countSpan = document.createElement('span');
+                    countSpan.textContent = `${items.length} area${items.length > 1 ? 's' : ''}`;
+                    countSpan.style.cssText = 'color: #aaa; font-size: 0.9em;';
+
+                    header.appendChild(productSpan);
+                    header.appendChild(hazardSpan);
+                    header.appendChild(countSpan);
+
+                    // Due to
+                    if (first.due_to) {
+                        const dueDiv = document.createElement('div');
+                        dueDiv.style.cssText = 'color: #00ff00; margin-bottom: 4px; font-size: 0.9em;';
+                        dueDiv.textContent = `Due to: ${first.due_to}`;
+                        group.appendChild(header);
+                        group.appendChild(dueDiv);
+                    } else {
+                        group.appendChild(header);
+                    }
+
+                    // Valid time
+                    const validTime = first.validTime ? new Date(first.validTime) : null;
+                    if (validTime) {
+                        const validDiv = document.createElement('div');
+                        validDiv.style.cssText = 'color: #aaa; font-size: 0.85em;';
+                        validDiv.textContent = `Valid: ${Utils.formatDateTime(validTime)} (F+${first.forecastHour || 0}h)`;
+                        group.appendChild(validDiv);
+                    }
+
+                    content.appendChild(group);
+                });
+
+                Utils.showElement('gairmetDisplay');
             }
         };
 
@@ -2048,11 +2245,13 @@
 
                 try {
                     // Fetch all data in parallel
-                    const [tafResult, metarResult, pirepResult, airportResult] = await Promise.allSettled([
+                    const [tafResult, metarResult, pirepResult, airportResult, sigmetResult, gairmetResult] = await Promise.allSettled([
                         Api.fetchTafData(icao),
                         Api.fetchMetarData(icao),
                         Api.fetchPirepData(icao),
-                        Api.fetchAirport(icao)
+                        Api.fetchAirport(icao),
+                        Api.fetchSigmet(),
+                        Api.fetchGairmet()
                     ]);
 
                     // Check if all requests failed - likely invalid ICAO
@@ -2088,6 +2287,20 @@
                         UI.displayPirepData(pirepResult.value);
                     } else {
                         UI.showNoPirepData(icao);
+                    }
+
+                    // Process SIGMET
+                    if (sigmetResult.status === 'fulfilled') {
+                        UI.displaySigmetData(sigmetResult.value);
+                    } else {
+                        UI.displaySigmetData([]);
+                    }
+
+                    // Process G-AIRMET
+                    if (gairmetResult.status === 'fulfilled') {
+                        UI.displayGairmetData(gairmetResult.value);
+                    } else {
+                        UI.displayGairmetData([]);
                     }
 
                     // Process Airport
@@ -2292,6 +2505,8 @@
                 document.getElementById('tafView').classList.add('hidden');
                 document.getElementById('metarView').classList.add('hidden');
                 document.getElementById('pirepView').classList.add('hidden');
+                document.getElementById('sigmetView').classList.add('hidden');
+                document.getElementById('gairmetView').classList.add('hidden');
                 document.getElementById('airportView').classList.add('hidden');
 
                 // Show selected view

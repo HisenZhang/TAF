@@ -1657,7 +1657,7 @@
                     },
                     {
                         label: 'Present Weather',
-                        value: data.wxString ? this.decodeWxString(data.wxString) : 'None reported'
+                        value: (data.wxString && data.wxString !== 'string' && data.wxString.trim() !== '') ? this.decodeWxString(data.wxString) : 'None reported'
                     },
                     {
                         label: 'Sky Condition',

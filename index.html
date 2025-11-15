@@ -1896,7 +1896,9 @@
 
                 let decoded = wxString;
                 for (const [code, desc] of Object.entries(wxCodes)) {
-                    decoded = decoded.replace(new RegExp(code, 'g'), desc);
+                    // Escape special regex characters in the code
+                    const escapedCode = code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    decoded = decoded.replace(new RegExp(escapedCode, 'g'), desc);
                 }
 
                 return `${wxString} (${decoded})`;
